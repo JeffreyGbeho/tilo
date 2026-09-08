@@ -1,0 +1,12 @@
+tilo for Debian
+===============
+
+The package installs the extension into the system extension directory but does
+not enable it. Enabling an extension writes to the user's dconf, which a package
+installed as root must not do, and which the user has not asked for. Enable it
+from Settings, Extensions.
+
+A copy in ~/.local/share/cinnamon/extensions/ takes priority over the one this
+package installs, which is how a development checkout shadows the release.
+
+ -- Jeffrey Gbeho <jeff.gbeho@gmail.com>

@@ -12,7 +12,27 @@ tilo is a Cinnamon extension. It is a folder of JavaScript that loads into the d
 
 ## Install
 
-From source, for now:
+Add the repository once, then apt handles updates like anything else:
+
+```sh
+curl -fsSL https://jeffreygbeho.github.io/tilo/tilo-archive-keyring.gpg \
+  | sudo tee /usr/share/keyrings/tilo-archive-keyring.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/tilo-archive-keyring.gpg] \
+  https://jeffreygbeho.github.io/tilo stable main" \
+  | sudo tee /etc/apt/sources.list.d/tilo.list
+
+sudo apt update
+sudo apt install tilo
+```
+
+Or grab the `.deb` from the [releases](https://github.com/JeffreyGbeho/tilo/releases):
+
+```sh
+sudo apt install ./tilo_0.4.0-1_all.deb
+```
+
+Or from source:
 
 ```sh
 git clone https://github.com/JeffreyGbeho/tilo
@@ -20,9 +40,12 @@ cd tilo
 make install-user
 ```
 
-Then enable it in **Settings > Extensions > Tilo**.
+Whichever route, enable it in **Settings > Extensions > Tilo**.
 
-Packaging for apt is planned. Nothing is enabled automatically and no setting of yours is touched, so uninstalling is `make uninstall-user` and nothing else.
+The package installs files and does nothing else. It runs no maintainer script,
+writes nothing to dconf, and does not enable itself, because a package running
+as root has no business touching a user's settings. Removing it leaves your
+configuration exactly as it was.
 
 ## Use it
 
@@ -110,8 +133,15 @@ Everything else is X11 only for now, which is what Cinnamon 6.4 runs.
 make dev-link     # symlink the source into the extension directory
 make test         # offline harness
 make live-test    # drive every open window through every action, for real
+make deb          # build the .deb into dist/
+make apt-repo     # build a signed apt repository into public/
 make restart      # restart Cinnamon, same as Ctrl+Alt+Escape
 ```
+
+The `debian/` directory is the real source packaging, the kind a PPA or a Debian
+sponsor builds from. `make deb` produces the same binary package using only
+dpkg, so anyone who cloned the repository can build it without installing a
+toolchain first.
 
 `make test` reproduces Cinnamon's module resolution rather than Node's, because the two disagree about relative paths and Node will happily pass code that Cinnamon refuses to load.
 

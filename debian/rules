@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+# The package ships JavaScript and JSON, so there is nothing to compile and
+# nothing architecture specific. `make install` places the files.
+
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_test:
+	node tests/verify.js src/tilo@jeffreygbeho

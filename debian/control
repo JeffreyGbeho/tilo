@@ -1,0 +1,30 @@
+Source: tilo
+Section: x11
+Priority: optional
+Maintainer: Jeffrey Gbeho <jeff.gbeho@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/JeffreyGbeho/tilo
+Vcs-Browser: https://github.com/JeffreyGbeho/tilo
+Vcs-Git: https://github.com/JeffreyGbeho/tilo.git
+Rules-Requires-Root: no
+
+Package: tilo
+Architecture: all
+Depends: ${misc:Depends}, cinnamon (>= 6.0)
+Provides: cinnamon-tilo
+Description: Windows 11 style snap layouts for the Cinnamon desktop
+ tilo adds a layout picker to Cinnamon. Drag a window toward the top of the
+ screen and a bar of layouts drops down; drop the window on a zone to place it.
+ The same picker opens from a shortcut, and zones can be drawn by hand.
+ .
+ Dragging the border between two tiled windows resizes both, and an arrangement
+ of windows can be saved and restored onto whatever is already open.
+ .
+ It is a Cinnamon extension rather than a separate program, so it adds no
+ daemon, no runtime and nothing to the session startup. It never modifies a
+ setting that belongs to the desktop without explicit consent, and restores
+ anything it is allowed to override.
+ .
+ The package installs the extension but does not enable it. Enable it from
+ Settings, Extensions.

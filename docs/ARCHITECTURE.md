@@ -93,8 +93,8 @@ end up under the panel.
 | 2 | Drag-to-top snap bar + `Super+Z` picker, ghost preview | **done** |
 | 3 | Split tree model, zone editor, custom layouts | **done** |
 | 4 | Linked-divider resize, saved arrangements | **done** |
-| 5 | `.deb` packaging + apt repository | next |
-| 6 | Publishing: Cinnamon Spices, then the Debian pipeline | planned |
+| 5 | `.deb` packaging + apt repository | **done** |
+| 6 | Publishing: Cinnamon Spices, then the Debian pipeline | next |
 
 ## Internationalisation
 
