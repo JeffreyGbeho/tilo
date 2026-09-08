@@ -13,8 +13,9 @@ const Gettext = require('gettext');
 
 const UUID = 'tilo@jeffreygbeho';
 
-/* get_user_data_dir() honours XDG_DATA_HOME; the home directory plus a
-   hardcoded '.local/share' does not. */
+/* get_user_data_dir() honours XDG_DATA_HOME. Building the path from the home
+   directory plus a fixed suffix would not, and would put the catalogue
+   somewhere gettext is not looking on a system that sets it. */
 Gettext.bindtextdomain(UUID, GLib.build_filenamev([GLib.get_user_data_dir(), 'locale']));
 
 function _(text) {
