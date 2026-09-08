@@ -34,21 +34,51 @@ function _paths() {
     return { dir: _backupDir, file: _backupFile };
 }
 
+/*
+ * The saved values live in memory and are loaded once, asynchronously, when the
+ * extension starts.
+ *
+ * Reading them on demand meant a synchronous file read on a path that can sit
+ * on a network home directory, from a thread shared with the compositor. It was
+ * only a few hundred bytes and only on a user action, but a blocking read has
+ * no business anywhere near the main loop, and there is no reason to repeat it:
+ * this process is the only thing that writes the file.
+ */
+let _backups = null;      /* null until the first load completes */
+
 function _readBackups() {
+    return _backups || {};
+}
+
+/*
+ * Called once from enable(). Attempts the read and treats a missing file as an
+ * empty set rather than asking first, which is both one syscall fewer and free
+ * of the gap between asking and reading.
+ */
+function load() {
+    if (_backups !== null) return;
+    _backups = {};
+
     try {
-        const file = Gio.File.new_for_path(_paths().file);
-        if (!file.query_exists(null)) return {};
-        const [ok, bytes] = file.load_contents(null);
-        if (!ok) return {};
-        return JSON.parse(new TextDecoder().decode(bytes));
+        Gio.File.new_for_path(_paths().file).load_contents_async(null, (file, result) => {
+            try {
+                const [ok, bytes] = file.load_contents_finish(result);
+                if (ok) _backups = JSON.parse(new TextDecoder().decode(bytes));
+            } catch (e) {
+                /* No file yet is the normal case on a first run. */
+                if (!e.matches || !e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) {
+                    Logger.debug(`no saved overrides to load: ${e}`);
+                }
+            }
+        });
     } catch (e) {
-        Logger.error('Could not read backups', e);
-        return {};
+        Logger.error('Could not start reading backups', e);
     }
 }
 
 function _writeBackups(backups) {
     try {
+        _backups = backups;
         const { dir, file } = _paths();
         GLib.mkdir_with_parents(dir, 0o755);
         GLib.file_set_contents(file, JSON.stringify(backups, null, 2));
@@ -130,4 +160,4 @@ function hasOverrides() {
     return Object.keys(_readBackups()).length > 0;
 }
 
-module.exports = { override, restore, restoreAll, hasOverrides };
+module.exports = { load, override, restore, restoreAll, hasOverrides };

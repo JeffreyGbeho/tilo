@@ -25,9 +25,10 @@ const STUBS = {
                   ModifierType: { BUTTON1_MASK: 256 } },
   'gi.Meta': { WindowType: { NORMAL: 0 }, MaximizeFlags: { BOTH: 3 },
                GrabOp: { MOVING: 1, KEYBOARD_MOVING: 2 } },
-  'gi.Gio': { File: { new_for_path: () => ({ query_exists: () => false }) } },
+  'gi.Gio': { File: { new_for_path: () => ({ load_contents_async() {} }) },
+              IOErrorEnum: { NOT_FOUND: 1 } },
   'gi.GLib': { build_filenamev: a => a.join('/'), get_user_config_dir: () => '/tmp/x',
-               get_home_dir: () => '/tmp/x', mkdir_with_parents: () => 0,
+               get_home_dir: () => '/tmp/x', get_user_data_dir: () => '/tmp/x', mkdir_with_parents: () => 0,
                file_set_contents: () => true },
   'gettext': { bindtextdomain() {}, dgettext: (d, s) => s, gettext: s => s }
 };

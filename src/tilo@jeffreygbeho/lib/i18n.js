@@ -13,7 +13,9 @@ const Gettext = require('gettext');
 
 const UUID = 'tilo@jeffreygbeho';
 
-Gettext.bindtextdomain(UUID, GLib.get_home_dir() + '/.local/share/locale');
+/* get_user_data_dir() honours XDG_DATA_HOME; the home directory plus a
+   hardcoded '.local/share' does not. */
+Gettext.bindtextdomain(UUID, GLib.build_filenamev([GLib.get_user_data_dir(), 'locale']));
 
 function _(text) {
     const fromXlet = Gettext.dgettext(UUID, text);
