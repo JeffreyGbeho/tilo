@@ -172,6 +172,36 @@ allocation so the thumbnails are revealed by the growing edge instead of hanging
 outside it. Traced on the real desktop, the width goes 166px, 337, 546, 668,
 700 over 385ms: front loaded, exactly the entrance curve.
 
+## Three reasons the overlay used to drop frames
+
+All three were found by measuring frame intervals on the running desktop, not by
+reading the code. The control, the same gesture with the extension disabled, is
+a mean of 8.6ms and a worst frame of 11ms.
+
+**Animating geometry re-lays-out every child.** Easing `width` or `height` on
+the bar made Clutter re-allocate it and its sixty-odd children every frame:
+mean 50.5ms, worst 131ms, eight frames over 32ms. The same animation expressed
+as `scale` and `translation` is a GPU transform and touches no allocation: mean
+9.8ms, worst 16ms, nothing dropped. A single actor with no children is fine
+either way, which is why the ghost still moves by geometry.
+
+**Building the actors on every drag.** The picker was rebuilt each time it was
+shown. It is now built once and kept, guarded by a signature over the work area,
+the gaps and the layout set, so it still rebuilds when any of those change.
+
+**Rasterising the shadow in front of the user.** `box-shadow: 0 10px 32px` over
+a 700x100 surface costs about 120ms the first time St paints it, once per
+session, and it landed on the exact frame the bar first appeared. Removing the
+shadow made the stall vanish, which identified it; the fix is to pay it at load
+instead. Clutter does not paint a fully transparent actor, so warming up at
+opacity 0 warms nothing, and opacity 1 is both painted and invisible. It has to
+be held long enough for a paint to happen: 120ms was not enough during
+Cinnamon's startup, 400ms was.
+
+After all three: mean 9.1ms, worst 18ms, no dropped frames, on the first gesture
+of a cold session. The extension adds 0.1MB and runs no timer at all when no
+window is being dragged.
+
 ## Integer geometry
 
 A fractional actor position is resampled and comes out soft, so every

@@ -1,3 +1,10 @@
+### 0.6.1
+
+* The picker animation no longer drops frames. Measured on the running desktop,
+  the mean frame interval during the gesture went from 50ms with 131ms stalls to
+  9.1ms with nothing over 18ms, which is within half a millisecond of not
+  running the extension at all.
+
 ### 0.6.0
 
 * The tab grows into the picker rather than cross-fading, so the two read as one

@@ -109,6 +109,15 @@ class Tilo {
             onSave: () => this._saveGroup()
         });
 
+        /* Build the overlay now rather than on the first drag: it is around
+           sixty actors and a style pass, and that showed up as a stalled frame
+           exactly when the user was watching. */
+        try {
+            this._picker.warmUp(this._currentWorkArea());
+        } catch (e) {
+            Logger.error('could not pre-build the picker', e);
+        }
+
         this._openIntent = new HoverIntent(OPEN_INTENT_MS, () => this._picker.expand());
         this._closeIntent = new HoverIntent(CLOSE_INTENT_MS, () => this._picker.collapse());
 

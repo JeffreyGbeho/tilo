@@ -136,6 +136,13 @@ class DragWatcher {
         this._pollId = Mainloop.timeout_add(POLL_INTERVAL_MS, () => {
             if (!this._window) return false;
             const [x, y] = global.get_pointer();
+
+            /* A drag spends a good part of its time with the pointer at rest,
+               and re-running the hit test against an unchanged position buys
+               nothing. This callback shares a thread with the compositor, so
+               the cheapest frame is the one that does nothing. */
+            if (x === this._lastX && y === this._lastY) return true;
+
             this._lastX = x;
             this._lastY = y;
             this._handlers.onDragMove(this._window, x, y);

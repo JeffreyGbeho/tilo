@@ -1,3 +1,11 @@
+tilo (0.6.1-1) unstable; urgency=medium
+
+  * The picker animation no longer drops frames. It is animated with transforms
+    rather than geometry, its actors are built once, and its shadow is
+    rasterised at load instead of in front of the user.
+
+ -- Jeffrey Gbeho <jeff.gbeho@gmail.com>  Tue, 08 Sep 2026 19:10:22 -0400
+
 tilo (0.6.0-1) unstable; urgency=medium
 
   * The tab now grows into the picker instead of cross-fading into it, on the

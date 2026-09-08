@@ -121,6 +121,13 @@ Plenty of extensions in this space overwrite desktop keybindings to make room fo
 
 If a future feature ever needs to take over a key that belongs to Cinnamon, it goes through `ConfigGuard`: you opt in explicitly, the old value is recorded first, and it is put back when you turn the option off, disable the extension, or remove it.
 
+## Cost
+
+Measured on the running desktop, during the whole gesture: a mean frame interval
+of 9.1ms with nothing over 18ms and no dropped frames, against 8.6ms for the
+same drag with the extension switched off. It adds 0.1MB, and runs no timer at
+all unless a window is actually being dragged.
+
 ## Known limits
 
 Apps that declare resize increments, GNOME Terminal being the usual one, round their own size down to whole character cells. tilo puts them at the exact corner of the zone and the leftover, up to about 14px, falls to the bottom right. No window manager can override this. `make live-test` reports it separately from real failures for exactly that reason.

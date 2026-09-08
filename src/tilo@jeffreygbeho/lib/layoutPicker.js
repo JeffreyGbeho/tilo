@@ -17,6 +17,7 @@
 
 const St = require('gi.St');
 const Main = require('ui.main');
+const Mainloop = require('mainloop');
 const Layouts = require('./lib/layouts');
 const Geometry = require('./lib/geometry');
 const Motion = require('./lib/motion');
@@ -52,6 +53,31 @@ const HOVER_SCALE = 1.09;
 const STAGGER_MS = 22;
 
 /*
+ * How long the overlay is held on screen at opacity 1 so its shadow gets
+ * rasterised. 400ms was measured as enough during Cinnamon's own startup, when
+ * the stage has plenty else to do; 600 leaves room on a slower machine.
+ */
+const WARM_UP_MS = 600;
+
+/*
+ * The bar is animated with transforms and never with geometry.
+ *
+ * Easing width or height on a container makes Clutter re-allocate it and every
+ * one of its children on every frame, and the bar holds around sixty actors.
+ * Measured on this machine, animating the geometry gave a mean frame interval
+ * of 50ms with 131ms stalls; the same animation on scale and translation gave
+ * 9.8ms with a worst frame of 16ms and nothing dropped. A single actor with no
+ * children is fine either way, which is why the ghost still moves by geometry:
+ * the cost is the relayout of children, not the property itself.
+ *
+ * So the bar always sits at its final rectangle, and only its transform moves.
+ * That also keeps the hit rectangles correct throughout the animation, which
+ * they were not while the allocation was still growing.
+ */
+const MORPH_SCALE = 0.86;
+const MORPH_LIFT = 6;
+
+/*
  * Rectangles for the zones inside one thumbnail, in integer pixels.
  *
  * Rounds the EDGES and derives the size, never the other way round. Rounding a
@@ -84,6 +110,9 @@ class LayoutPicker {
         this._miniRects = [];          /* stage coords, per layout per zone */
         this._realZones = [];          /* screen coords, per layout per zone */
         this._workArea = null;
+        this._signature_ = null;
+        this._teaserSignature = null;
+        this._warmUpId = 0;
 
         /* The ghost goes in first so the bar always sits above it: the preview
            covers a whole half of the screen and would otherwise wash over the
@@ -94,9 +123,8 @@ class LayoutPicker {
 
         this._bar = new St.Widget({ style_class: 'tilo-bar', reactive: false });
         this._bar.hide();
-        /* Clipped so the thumbnails are revealed by the bar growing over them
-           rather than hanging outside it while it is still small. */
-        this._bar.set_clip_to_allocation(true);
+        /* Grows from its own top centre, where the tab sits. */
+        this._bar.set_pivot_point(0.5, 0);
         Main.layoutManager.addChrome(this._bar, { affectsInputRegion: false });
 
         this._teaser = new St.Widget({ style_class: 'tilo-teaser', reactive: false });
@@ -108,10 +136,56 @@ class LayoutPicker {
     }
 
     destroy() {
+        if (this._warmUpId) { Mainloop.source_remove(this._warmUpId); this._warmUpId = 0; }
         this._clearThumbs();
         if (this._bar) { this._bar.destroy(); this._bar = null; }
         if (this._teaser) { this._teaser.destroy(); this._teaser = null; }
         if (this._ghost) { this._ghost.destroy(); this._ghost = null; }
+    }
+
+    /*
+     * Builds the actors ahead of time, so the cost does not land on the first
+     * frame of the user's first drag. Measured, that construction is a single
+     * 120ms stall; here it disappears into extension load, where nothing is
+     * waiting on it.
+     */
+    warmUp(workArea) {
+        this._build(workArea);
+        this._buildTeaser(workArea);
+
+        /*
+         * Building the actors early was not enough on its own. St rasterises a
+         * box-shadow into a texture the first time the actor is actually
+         * painted, and the bar's shadow is a 32px blur over 700x100. Traced on
+         * the running desktop, that landed as a single 120ms stall at the exact
+         * frame the bar first appeared, every session.
+         *
+         * Clutter skips painting a fully transparent actor, so warming up at
+         * opacity 0 warmed nothing. Opacity 1 is indistinguishable from
+         * invisible and does get painted, so the texture is built here instead
+         * of in front of the user. It has to be held for long enough that a
+         * paint actually happens: measured, 120ms was not enough during
+         * Cinnamon's own startup and 400ms was.
+         */
+        [this._bar, this._teaser, this._ghost].forEach(root => {
+            if (!root) return;
+            root.opacity = 1;
+            root.show();
+        });
+
+        this._warmUpId = Mainloop.timeout_add(WARM_UP_MS, () => {
+            this._warmUpId = 0;
+            /* If a drag began while this was pending, the overlay is now doing
+               its real job and must not be torn down under it. */
+            if (this._state !== 'hidden') return false;
+
+            [this._bar, this._teaser, this._ghost].forEach(root => {
+                if (!root) return;
+                root.hide();
+                root.opacity = 0;
+            });
+            return false;
+        });
     }
 
     get visible() { return this._state !== 'hidden'; }
@@ -140,7 +214,24 @@ class LayoutPicker {
         this._minis = [];
     }
 
+    /*
+     * What the built actors depend on. Rebuilding them costs about sixty actor
+     * creations plus a style pass, which showed up as a single stalled frame at
+     * the start of every drag. Nothing about the picker changes between one
+     * drag and the next, so it is built once and kept.
+     */
+    _signature(workArea) {
+        const { inner, outer } = this._getGaps();
+        return [workArea.x, workArea.y, workArea.width, workArea.height,
+                inner, outer,
+                Layouts.all().map(l => l.id).join(',')].join('|');
+    }
+
     _build(workArea) {
+        const signature = this._signature(workArea);
+        if (signature === this._signature_ && this._thumbs.length > 0) return;
+        this._signature_ = signature;
+
         this._clearThumbs();
         this._workArea = workArea;
 
@@ -187,9 +278,14 @@ class LayoutPicker {
         });
 
         this._bar.set_size(this._barW, this._barH);
+        this._bar.set_position(this._barX, this._barY);
     }
 
     _buildTeaser(workArea) {
+        if (this._teaserSignature === this._signature_ &&
+            this._teaser.get_n_children() > 0) return;
+        this._teaserSignature = this._signature_;
+
         this._teaser.destroy_all_children();
 
         const layouts = Layouts.all().slice(0, TEASER_COUNT);
@@ -226,11 +322,12 @@ class LayoutPicker {
         this._state = 'teaser';
 
         this._teaser.remove_all_transitions();
-        this._teaser.set_position(this._teaserX, this._teaserY - this._teaserH);
+        this._teaser.set_position(this._teaserX, this._teaserY);
+        this._teaser.translation_y = -this._teaserH;
         this._teaser.opacity = 0;
         this._teaser.show();
         Motion.arrive(this._teaser, {
-            y: this._teaserY, opacity: 255, duration: Motion.MS.normal
+            translation_y: 0, opacity: 255, duration: Motion.MS.normal
         });
     }
 
@@ -251,8 +348,8 @@ class LayoutPicker {
         });
 
         this._bar.remove_all_transitions();
-        this._bar.set_position(this._teaserX, this._teaserY);
-        this._bar.set_size(this._teaserW, this._teaserH);
+        this._bar.set_scale(MORPH_SCALE, MORPH_SCALE);
+        this._bar.translation_y = -MORPH_LIFT;
         this._bar.opacity = 0;
         this._bar.show();
 
@@ -262,8 +359,7 @@ class LayoutPicker {
         });
 
         Motion.arrive(this._bar, {
-            x: this._barX, y: this._barY,
-            width: this._barW, height: this._barH,
+            scale_x: 1, scale_y: 1, translation_y: 0,
             opacity: 255, duration: Motion.MS.morph
         });
 
@@ -283,14 +379,14 @@ class LayoutPicker {
 
         this._bar.remove_all_transitions();
         Motion.leave(this._bar, {
-            x: this._teaserX, y: this._teaserY,
-            width: this._teaserW, height: this._teaserH,
+            scale_x: MORPH_SCALE, scale_y: MORPH_SCALE, translation_y: -MORPH_LIFT,
             opacity: 0, duration: Motion.MS.quick,
             onComplete: () => { if (this._bar) this._bar.hide(); }
         });
 
         this._teaser.remove_all_transitions();
         this._teaser.set_position(this._teaserX, this._teaserY);
+        this._teaser.translation_y = 0;
         this._teaser.show();
         Motion.arrive(this._teaser, { opacity: 255, duration: Motion.MS.normal });
     }
@@ -302,14 +398,15 @@ class LayoutPicker {
         this._state = 'expanded';
 
         this._bar.remove_all_transitions();
-        this._bar.set_position(this._barX, this._barY - 10);
-        this._bar.set_size(this._barW, this._barH);
+        this._bar.set_scale(MORPH_SCALE, MORPH_SCALE);
+        this._bar.translation_y = -MORPH_LIFT;
         this._bar.opacity = 0;
         this._bar.show();
         this._thumbs.forEach(t => { t.remove_all_transitions(); t.opacity = 0; });
 
         Motion.arrive(this._bar, {
-            y: this._barY, opacity: 255, duration: Motion.MS.normal
+            scale_x: 1, scale_y: 1, translation_y: 0,
+            opacity: 255, duration: Motion.MS.normal
         });
         this._thumbs.forEach((thumb, i) => {
             Motion.arrive(thumb, {

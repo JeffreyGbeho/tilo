@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: tilo 0.5.1-1\n"
+"Project-Id-Version: tilo 0.6.0-1\n"
 "Report-Msgid-Bugs-To: https://github.com/JeffreyGbeho/tilo/issues\n"
-"POT-Creation-Date: 2026-09-08 18:32-0400\n"
+"POT-Creation-Date: 2026-09-08 18:49-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/tilo@jeffreygbeho/extension.js:281
+#: src/tilo@jeffreygbeho/extension.js:302
 msgid "Group"
 msgstr ""
 
-#: src/tilo@jeffreygbeho/extension.js:326
+#: src/tilo@jeffreygbeho/extension.js:347
 #: src/tilo@jeffreygbeho/lib/layouts.js:58
 msgid "Custom"
 msgstr ""
