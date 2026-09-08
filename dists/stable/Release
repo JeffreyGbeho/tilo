@@ -1,0 +1,23 @@
+Architectures: all
+Codename: stable
+Components: main
+Date: Tue, 08 Sep 2026 23:14:25 +0000
+Label: tilo
+Origin: tilo
+Suite: stable
+MD5Sum:
+ 53cdaf1f861a49d2bc8cdef48c62a862              130 Release
+ 8f6e933fe32fbd916c741a99aa493467             1422 main/binary-all/Packages
+ 274fdcbc3180d81e8713d0e7bf9ad63c              894 main/binary-all/Packages.gz
+SHA1:
+ 45575ccffdec9d862d566318c3be18064f2b6aca              130 Release
+ b54655d1c041d47a6e0804a025649dc2cc37d78d             1422 main/binary-all/Packages
+ f7370203d3f3652b1ab8f75fb66de56a65ef2064              894 main/binary-all/Packages.gz
+SHA256:
+ a90055ded88aabc48ca926951a060f16610a540c641ba03e0ac35baf0379a4c8              130 Release
+ ab4e2a1aa21b0e0187b49aa9c3680a45862c684dc09d82b4d23252d80b6f3bc9             1422 main/binary-all/Packages
+ 65aa79b3a3395000b35ea58b518737a43408a59e4009bf3dedf5e5675bdbbf01              894 main/binary-all/Packages.gz
+SHA512:
+ caca41ac9701020fd9c57783cf3954cc92c8350aa24a417a2008ba7ddb9264df588d4fc19644189cc3c6e8ccd0798945ceffdfefc6d58f43a0c2655acce298ee              130 Release
+ c85d64a4ceb4bd7ef1ca302c32a0b25285ec17382ad23ce878d562562dea618814351277ea09cbb9f51ec01dd3ee283f7d746d679d4f7d7e663d50f4867b3002             1422 main/binary-all/Packages
+ 1292e79201178bf43cf093013187a2fb9ae7e1bb8ba6eb2f61fcaa0445d9b4a05da18efb87cb56c3ac1132109465d55e6b110396c0a6aa37e2e88ab047a08acf              894 main/binary-all/Packages.gz

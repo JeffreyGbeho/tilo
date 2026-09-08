@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tilo apt repository</title>
+<style>
+body{font:15px/1.6 system-ui,sans-serif;max-width:44rem;margin:4rem auto;padding:0 1.5rem}
+pre{background:#f4f4f5;padding:1rem;border-radius:6px;overflow-x:auto}
+</style>
+<h1>tilo</h1>
+<p>Windows 11 style snap layouts for the Cinnamon desktop.
+<a href="https://github.com/JeffreyGbeho/tilo">Source and documentation</a>.</p>
+<h2>Install</h2>
+<pre>curl -fsSL https://jeffreygbeho.github.io/tilo/tilo-archive-keyring.gpg \
+  | sudo tee /usr/share/keyrings/tilo-archive-keyring.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/tilo-archive-keyring.gpg] \
+  https://jeffreygbeho.github.io/tilo stable main" \
+  | sudo tee /etc/apt/sources.list.d/tilo.list
+
+sudo apt update
+sudo apt install tilo</pre>
+<p>Then enable it from Settings, Extensions. Current version: 0.6.1-1.</p>
