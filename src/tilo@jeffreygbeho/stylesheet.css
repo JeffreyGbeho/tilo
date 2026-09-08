@@ -1,0 +1,57 @@
+/*
+ * tilo — stylesheet.
+ *
+ * Radii follow the Fluent geometry tokens Windows 11 publishes: 8px on the
+ * container, 4px on the elements inside it. Durations and easing live in
+ * layoutPicker.js (250ms in, 167ms out, 83ms for hover).
+ *
+ * St has no backdrop blur, so the panel leans on a dark translucent fill and a
+ * hairline top highlight instead of acrylic. It reads as a floating surface
+ * over any wallpaper.
+ */
+
+.tilo-bar {
+    background-color: rgba(28, 28, 30, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* The collapsed hint: a drawer pull, not a panel. */
+.tilo-bar-hint {
+    background-color: rgba(28, 28, 30, 0.92);
+    border: none;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* One thumbnail = one miniature of the whole screen. */
+.tilo-thumb {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+}
+
+.tilo-thumb-active {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+/* One zone inside a thumbnail. */
+.tilo-mini {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+}
+
+.tilo-mini-active {
+    background-color: rgba(120, 170, 255, 0.95);
+    border: 1px solid rgba(190, 215, 255, 0.9);
+}
+
+/*
+ * The full-size preview drawn over the real target area. Hovering a thumbnail
+ * a few millimetres wide is not enough to judge where a window will land.
+ */
+.tilo-ghost {
+    background-color: rgba(120, 170, 255, 0.20);
+    border: 2px solid rgba(120, 170, 255, 0.85);
+    border-radius: 8px;
+}
