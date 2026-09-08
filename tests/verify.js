@@ -57,7 +57,7 @@ const ok = (c, label, detail = '') => {
 console.log('Module loading (Cinnamon resolution rules)');
 for (const m of ['./extension', './lib/logger', './lib/geometry', './lib/windowMover',
                  './lib/layouts', './lib/configGuard', './lib/dragWatcher',
-                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor']) {
+                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor', './lib/tileGroup', './lib/savedGroups', './lib/groupSwitcher']) {
   try { cinnamonRequire(m); ok(true, `loads ${m}`); }
   catch (e) { ok(false, `loads ${m}`, String(e.message).split('\n')[0]); }
 }
@@ -129,6 +129,24 @@ ok(!Tree.isValid({ dir: 'row', children: [leaf()], weights: [1] }), 'a one child
 ok(!Tree.isValid({ dir: 'diag', children: [leaf(), leaf()], weights: [1, 1] }), 'an unknown direction is invalid');
 ok(!Tree.isValid({ dir: 'row', children: [leaf(), leaf()], weights: [1] }), 'mismatched weights are invalid');
 ok(Tree.isValid(Layouts.BUILTIN[4].tree), 'the 4x3 grid is a valid tree');
+
+console.log('\nBoundaries between zones');
+/* row [ leaf , col [ leaf , leaf ] ]  with weights [2,1] */
+const mainSide = branch('row', [leaf(), branch('col', [leaf(), leaf()])], [2, 1]);
+const zones = Tree.toZones(mainSide);
+ok(JSON.stringify(Tree.rectAt(mainSide, [1])) === JSON.stringify([2 / 3, 0, 1 / 3, 1]),
+   'rectAt reports the rectangle of a branch, not just a leaf');
+ok(JSON.stringify(Tree.boundaryFor(mainSide, zones[0].path, 'right')) ===
+   JSON.stringify({ path: [], index: 0 }), 'the big zone owns the root boundary on its right');
+ok(Tree.boundaryFor(mainSide, zones[0].path, 'left') === null,
+   'its left edge is the screen edge and cannot move');
+ok(JSON.stringify(Tree.boundaryFor(mainSide, zones[1].path, 'bottom')) ===
+   JSON.stringify({ path: [1], index: 0 }), 'the top right zone owns the boundary inside its column');
+ok(JSON.stringify(Tree.boundaryFor(mainSide, zones[1].path, 'left')) ===
+   JSON.stringify({ path: [], index: 0 }),
+   'a left edge walks up past its own parent to the split that actually owns it');
+ok(Tree.boundaryFor(mainSide, zones[1].path, 'top') === null, 'top of the top zone is fixed');
+ok(Tree.boundaryFor(mainSide, zones[2].path, 'bottom') === null, 'bottom of the bottom zone is fixed');
 
 console.log('\nEvery built-in layout still resolves as before');
 const EXPECTED = { halves: 2, thirds: 3, 'main-side': 3, quarters: 4, 'grid-4x3': 12 };

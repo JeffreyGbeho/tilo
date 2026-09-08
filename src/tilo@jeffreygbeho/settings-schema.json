@@ -93,6 +93,11 @@
         "default": "<Super><Shift>z",
         "description": "Open the zone editor"
     },
+    "kb-groups": {
+        "type": "keybinding",
+        "default": "<Super>g",
+        "description": "Open saved arrangements"
+    },
     "sepCustom": {
         "type": "separator"
     },
@@ -108,6 +113,22 @@
         "type": "button",
         "description": "Delete all custom layouts",
         "callback": "clearCustomLayouts"
+    },
+    "sepGroups": {
+        "type": "separator"
+    },
+    "headGroups": {
+        "type": "header",
+        "description": "Saved arrangements"
+    },
+    "saved-groups": {
+        "type": "generic",
+        "default": []
+    },
+    "clear-groups": {
+        "type": "button",
+        "description": "Delete all saved arrangements",
+        "callback": "clearSavedGroups"
     },
     "sep2": {
         "type": "separator"

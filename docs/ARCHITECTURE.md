@@ -46,6 +46,9 @@ configuration at install time.
 | `lib/layoutTree.js` | The layout model: a split tree, and pure operations on it | Knows nothing about pixels or actors |
 | `lib/layouts.js` | Built-in and custom layouts, pixel resolution, hit testing | Draws nothing |
 | `lib/zoneEditor.js` | Full screen editor for cutting a layout up | Does not decide what a layout means |
+| `lib/tileGroup.js` | Which window sits in which zone, per monitor and workspace; linked resize | Does not persist anything |
+| `lib/savedGroups.js` | Saving an arrangement and matching it back onto open windows | Never launches an application |
+| `lib/groupSwitcher.js` | The saved arrangements overlay | Does not decide what a group is |
 | `lib/configGuard.js` | Backup/restore of foreign keys, under consent | Applies nothing without opt-in |
 | `lib/logger.js` | Prefixed logging, silent by default | - |
 | `lib/dragWatcher.js` | `grab-op-begin`/`end`, pointer polling during the grab | Draws nothing |
@@ -89,8 +92,8 @@ end up under the panel.
 | 1 | Skeleton: clean lifecycle, CSD-safe placement, shortcuts, settings UI | **done** |
 | 2 | Drag-to-top snap bar + `Super+Z` picker, ghost preview | **done** |
 | 3 | Split tree model, zone editor, custom layouts | **done** |
-| 4 | Linked-divider resize; named savable window sets (the #1 unmet request in the ecosystem) | next |
-| 5 | `.deb` packaging + apt repository | planned |
+| 4 | Linked-divider resize, saved arrangements | **done** |
+| 5 | `.deb` packaging + apt repository | next |
 | 6 | Publishing: Cinnamon Spices, then the Debian pipeline | planned |
 
 ## Internationalisation
@@ -128,3 +131,20 @@ on demand and never stored, so the two cannot fall out of step.
 
 This is the same model KWin uses, and the part of KWin's tiling that other
 projects get asked to copy.
+
+## What the tree bought us in phase 4
+
+Resizing tiled neighbours together looks like it needs edge detection and a
+neighbour index. With a tree it needs neither.
+
+Comparing a window's rectangle before and after a manual resize says which edges
+the user moved. `boundaryFor` walks up from that zone to the split that actually
+owns each edge, which is not always its own parent: a zone can be the last child
+of its column and still sit against a boundary owned by a grandparent. Moving
+the border is then one weight changing, and the neighbours follow because the
+whole group is laid out again from the same tree.
+
+The same record answers the other half. A saved arrangement is that tree plus,
+per zone, enough to recognise the window that was in it. Restoring matches those
+descriptions against the windows already open rather than launching new ones,
+which is the part every other implementation skips.

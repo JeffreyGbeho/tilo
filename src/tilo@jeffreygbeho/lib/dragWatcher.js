@@ -17,8 +17,20 @@ const Logger = require('./lib/logger');
 /* ~60 Hz. Measured cost of a poll plus hit test is well under a microsecond. */
 const POLL_INTERVAL_MS = 16;
 
+/*
+ * Collected from the enum rather than listed by hand: Mutter has eight resize
+ * operations plus keyboard variants, and the set has changed between versions.
+ */
+const RESIZE_OPS = Object.keys(Meta.GrabOp)
+    .filter(name => name.indexOf('RESIZING') !== -1)
+    .map(name => Meta.GrabOp[name]);
+
 class DragWatcher {
-    /* handlers: { onDragMove(window, x, y), onDragEnd(window, x, y) } */
+    /* handlers: {
+     *   onDragMove(window, x, y),
+     *   onDragEnd(window, x, y),
+     *   onResizeEnd(window, startRect, endRect)
+     * } */
     constructor(handlers) {
         this._handlers = handlers;
         this._beginId = 0;
@@ -27,6 +39,7 @@ class DragWatcher {
         this._window = null;
         this._lastX = 0;
         this._lastY = 0;
+        this._resizing = null;
     }
 
     enable() {
@@ -60,9 +73,28 @@ class DragWatcher {
                op === Meta.GrabOp.KEYBOARD_MOVING;
     }
 
+    _isResize(op) {
+        return RESIZE_OPS.indexOf(op) !== -1;
+    }
+
+    _rect(window) {
+        const r = window.get_frame_rect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }
+
     _onGrabBegin(args) {
         const { window, op } = this._parse(args);
-        if (!window || !this._isMove(op)) return;
+        if (!window) return;
+
+        if (this._isResize(op)) {
+            /* Remember the geometry rather than the operation: comparing the
+               rectangle before and after tells us which edges the user actually
+               moved, without having to map eight enum values onto edges. */
+            this._resizing = { window, startRect: this._rect(window) };
+            return;
+        }
+
+        if (!this._isMove(op)) return;
 
         this._window = window;
         this._startPolling();
@@ -70,6 +102,15 @@ class DragWatcher {
     }
 
     _onGrabEnd(args) {
+        if (this._resizing) {
+            const { window, startRect } = this._resizing;
+            this._resizing = null;
+            if (this._handlers.onResizeEnd) {
+                this._handlers.onResizeEnd(window, startRect, this._rect(window));
+            }
+            return;
+        }
+
         if (!this._window) return;
 
         const window = this._window;

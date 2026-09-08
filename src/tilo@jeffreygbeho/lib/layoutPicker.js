@@ -81,6 +81,17 @@ class LayoutPicker {
         return this._realZones[this._hovered.layout][this._hovered.zone];
     }
 
+    /* The same thing plus which layout it belongs to, so the caller can record
+       the window as part of that arrangement. */
+    hoveredSelection() {
+        if (!this._hovered) return null;
+        return {
+            layout: this._layouts[this._hovered.layout],
+            zoneIndex: this._hovered.zone,
+            rect: this._realZones[this._hovered.layout][this._hovered.zone]
+        };
+    }
+
     /* ---------------------------------------------------------------- build */
 
     _clearThumbs() {
@@ -95,6 +106,7 @@ class LayoutPicker {
 
         const { inner, outer } = this._getGaps();
         const layouts = Layouts.all();
+        this._layouts = layouts;
         const count = layouts.length;
         const barW = count * THUMB_W + (count - 1) * THUMB_GAP + 2 * BAR_PAD;
         const barH = THUMB_H + 2 * BAR_PAD;

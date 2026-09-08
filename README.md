@@ -46,6 +46,34 @@ dragging a border is one number changing.
 
 There is a button in the settings to delete every custom layout at once.
 
+## Neighbours resize together
+
+Drag the border between two tiled windows and both follow. Cinnamon used to do
+this and lost it in the Mutter rebase, with nothing in the changelog. It is the
+single feature people cite for sticking with plain edge snapping instead of a
+zone tool, because without it a layout stops being a layout the moment you
+adjust anything.
+
+Because a layout is a tree, this is not edge detection and bookkeeping. The
+border you dragged belongs to exactly one split, and moving it is that split's
+weight changing. Everything else follows from laying the group out again.
+
+## Save an arrangement, put it back later
+
+![Saved arrangements, one card per remembered set of windows](docs/media/saved-groups.png)
+
+Press `Super+G`. Save what is on screen, and restore it whenever you like:
+tilo matches the saved slots against the windows you already have open, by
+application and then by title, and puts each one back where it was.
+
+This is the most requested feature in the whole category and close to unserved.
+The GNOME shell issue asking for it is the highest voted of any tiling project,
+KDE has had one open since 2023, and Windows 11 snap groups die when a single
+member closes or you reboot.
+
+tilo restores into the windows you already have rather than launching fresh
+ones, which is the half that actually saves you time.
+
 Or skip the picker entirely:
 
 | Shortcut | |
@@ -58,6 +86,7 @@ Or skip the picker entirely:
 | `Super+Ctrl+C` | Center |
 | `Super+Z` | Layout picker |
 | `Super+Shift+Z` | Zone editor |
+| `Super+G` | Saved arrangements |
 
 Every one of them is rebindable in *Settings > Extensions > Tilo > Configure*, along with gaps and the distance from the top edge that reveals the bar. If you find the drag trigger intrusive, there is a switch to turn it off and keep the rest.
 

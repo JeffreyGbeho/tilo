@@ -19,6 +19,9 @@ const { DragWatcher } = require('./lib/dragWatcher');
 const { LayoutPicker } = require('./lib/layoutPicker');
 const { ZoneEditor } = require('./lib/zoneEditor');
 const Tree = require('./lib/layoutTree');
+const { TileGroups } = require('./lib/tileGroup');
+const SavedGroups = require('./lib/savedGroups');
+const { GroupSwitcher } = require('./lib/groupSwitcher');
 
 const UUID = 'tilo@jeffreygbeho';
 
@@ -45,6 +48,8 @@ class Tilo {
         this._registered = [];
         this._picker = null;
         this._editor = null;
+        this._groups = null;
+        this._switcher = null;
         this._drag = null;
         this._keyPollId = 0;
         this._keyMode = false;
@@ -61,25 +66,37 @@ class Tilo {
         this._settings.bind('custom-layouts', 'customLayouts',
                             () => Layouts.setCustom(this.customLayouts));
         Layouts.setCustom(this.customLayouts);
-        BINDINGS.concat([{ setting: 'kb-picker' }, { setting: 'kb-editor' }]).forEach(({ setting }) => {
+        this._settings.bind('saved-groups', 'savedGroups', () => {});
+        BINDINGS.concat([{ setting: 'kb-picker' }, { setting: 'kb-editor' },
+                         { setting: 'kb-groups' }]).forEach(({ setting }) => {
             this._settings.bind(setting, this._propertyFor(setting),
                                 () => this._rebindHotkeys());
         });
 
         Logger.setDebug(this.debugEnabled);
 
-        this._picker = new LayoutPicker(() => ({
-            inner: this.innerGap, outer: this.outerGap
-        }));
+        const gaps = () => ({ inner: this.innerGap, outer: this.outerGap });
+
+        this._picker = new LayoutPicker(gaps);
+        this._groups = new TileGroups(gaps);
 
         this._editor = new ZoneEditor({
             onSave: tree => this._saveLayout(tree),
             onCancel: () => Logger.debug('editor cancelled')
         });
 
+        this._switcher = new GroupSwitcher({
+            getGroups: () => SavedGroups.load(this.savedGroups),
+            canSave: () => this._snapshot() !== null,
+            onRestore: group => this._restoreGroup(group),
+            onDelete: group => this._forgetGroup(group),
+            onSave: () => this._saveGroup()
+        });
+
         this._drag = new DragWatcher({
             onDragMove: (w, x, y) => this._onDragMove(w, x, y),
-            onDragEnd: (w, x, y) => this._onDragEnd(w, x, y)
+            onDragEnd: (w, x, y) => this._onDragEnd(w, x, y),
+            onResizeEnd: (w, from, to) => this._onResizeEnd(w, from, to)
         });
         this._drag.enable();
 
@@ -98,6 +115,8 @@ class Tilo {
         this._unbindHotkeys();
 
         if (this._editor) { this._editor.close(); this._editor = null; }
+        if (this._switcher) { this._switcher.close(); this._switcher = null; }
+        if (this._groups) { this._groups.clear(); this._groups = null; }
         if (this._drag) { this._drag.disable(); this._drag = null; }
         if (this._picker) { this._picker.destroy(); this._picker = null; }
         WindowMover.reset();
@@ -135,6 +154,7 @@ class Tilo {
         });
         this._register('tilo-picker', this.kbPicker, () => this._toggleKeyMode());
         this._register('tilo-editor', this.kbEditor, () => this._toggleEditor());
+        this._register('tilo-groups', this.kbGroups, () => this._toggleSwitcher());
     }
 
     _register(name, combination, callback) {
@@ -199,9 +219,71 @@ class Tilo {
     }
 
     _onDragEnd(window, x, y) {
-        const zone = this._picker ? this._picker.hoveredZone() : null;
+        const selection = this._picker ? this._picker.hoveredSelection() : null;
         if (this._picker) this._picker.hide();
-        if (zone) WindowMover.place(window, zone);
+        if (selection) this._placeInZone(window, selection);
+    }
+
+    /*
+     * Placing through the picker also records the window as part of that
+     * arrangement, which is what lets neighbours resize together and lets the
+     * whole set be saved.
+     */
+    _placeInZone(window, selection) {
+        WindowMover.place(window, selection.rect);
+        this._groups.assign(window, selection.layout, selection.zoneIndex);
+        this._groups.prune();
+    }
+
+    _onResizeEnd(window, startRect, endRect) {
+        if (!this._groups) return;
+        this._groups.prune();
+        this._groups.resizeFrom(window, startRect, endRect);
+    }
+
+    /* -------------------------------------------------- saved arrangements */
+
+    _toggleSwitcher() {
+        if (!this._switcher) return;
+        if (this._switcher.open) { this._switcher.close(); return; }
+        this._stopKeyMode();
+        this._switcher.show(this._currentWorkArea());
+    }
+
+    _snapshot() {
+        const window = global.display.get_focus_window();
+        if (!window || !this._groups) return null;
+        this._groups.prune();
+        return this._groups.snapshot(window);
+    }
+
+    _saveGroup() {
+        const snapshot = this._snapshot();
+        if (!snapshot) return;
+
+        const existing = SavedGroups.load(this.savedGroups);
+        const group = SavedGroups.create(snapshot, `Group ${existing.length + 1}`);
+        this._settings.setValue('saved-groups', existing.concat([group]));
+        Logger.info(`saved "${group.name}" with ${group.windows.length} window(s)`);
+    }
+
+    _restoreGroup(group) {
+        const workspace = global.workspace_manager.get_active_workspace();
+        SavedGroups.restore(group, workspace, this._currentWorkArea(),
+                            { inner: this.innerGap, outer: this.outerGap },
+                            this._groups);
+    }
+
+    _forgetGroup(group) {
+        const next = SavedGroups.load(this.savedGroups).filter(g => g.id !== group.id);
+        this._settings.setValue('saved-groups', next);
+        Logger.info(`forgot "${group.name}"`);
+    }
+
+    /* Bound to the button in the settings window. */
+    clearSavedGroups() {
+        this._settings.setValue('saved-groups', []);
+        Logger.info('saved arrangements cleared');
     }
 
     /* --------------------------------------------------------- zone editor */
@@ -272,10 +354,10 @@ class Tilo {
             const [x, y, mods] = global.get_pointer();
             this._picker.updatePointer(x, y);
             if (mods & Clutter.ModifierType.BUTTON1_MASK) {
-                const zone = this._picker.hoveredZone();
+                const selection = this._picker.hoveredSelection();
                 const window = this._keyWindow;
                 this._stopKeyMode();
-                if (zone && window) WindowMover.place(window, zone);
+                if (selection && window) this._placeInZone(window, selection);
                 return false;
             }
             return true;

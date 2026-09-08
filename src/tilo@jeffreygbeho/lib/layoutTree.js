@@ -153,7 +153,57 @@ function isValid(node) {
     return node.children.every(isValid);
 }
 
+/* The fractional rectangle any node occupies, branches included. Needed to turn
+   a drag measured in pixels into a weight change on the right branch. */
+function rectAt(root, path) {
+    let rect = [0, 0, 1, 1];
+    let node = root;
+    for (const index of path) {
+        const total = node.weights.reduce((a, b) => a + b, 0);
+        const before = node.weights.slice(0, index).reduce((a, b) => a + b, 0) / total;
+        const share = node.weights[index] / total;
+        if (node.dir === 'row') {
+            rect = [rect[0] + before * rect[2], rect[1], share * rect[2], rect[3]];
+        } else {
+            rect = [rect[0], rect[1] + before * rect[3], rect[2], share * rect[3]];
+        }
+        node = node.children[index];
+    }
+    return rect;
+}
+
+/*
+ * Finds the split that owns one edge of a zone.
+ *
+ * Dragging the right edge of a zone does not necessarily move its own parent's
+ * boundary: a zone can be the last child of its parent and still sit against a
+ * boundary owned by a grandparent. So walk up until a split in the matching
+ * direction has a neighbour on that side.
+ *
+ * Returns { path, index } addressing the boundary between children `index` and
+ * `index + 1`, or null when the edge is the screen edge and nothing can move.
+ */
+function boundaryFor(root, path, edge) {
+    const wanted = (edge === 'left' || edge === 'right') ? 'row' : 'col';
+    const towardsEnd = (edge === 'right' || edge === 'bottom');
+
+    for (let depth = path.length - 1; depth >= 0; depth--) {
+        const parentPath = path.slice(0, depth);
+        const parent = nodeAt(root, parentPath);
+        const childIndex = path[depth];
+        if (parent.dir !== wanted) continue;
+
+        if (towardsEnd && childIndex < parent.children.length - 1) {
+            return { path: parentPath, index: childIndex };
+        }
+        if (!towardsEnd && childIndex > 0) {
+            return { path: parentPath, index: childIndex - 1 };
+        }
+    }
+    return null;
+}
+
 module.exports = {
     leaf, branch, isLeaf, clone, toZones, toFractions, nodeAt,
-    countZones, splitAt, removeAt, resizeAt, isValid
+    countZones, splitAt, removeAt, resizeAt, isValid, rectAt, boundaryFor
 };

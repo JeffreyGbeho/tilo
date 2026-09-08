@@ -82,3 +82,40 @@
     font-size: 12px;
     padding: 10px 18px;
 }
+
+/* Saved arrangements. */
+.tilo-switcher {
+    background-color: rgba(12, 13, 16, 0.80);
+}
+
+.tilo-switcher-panel {
+    background-color: rgba(24, 25, 28, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+}
+
+.tilo-card {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.tilo-card-hover {
+    background-color: rgba(96, 156, 255, 0.22);
+    border: 1px solid rgb(96, 156, 255);
+}
+
+.tilo-card-save {
+    border: 1px dashed rgba(255, 255, 255, 0.28);
+}
+
+.tilo-card-preview {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 5px;
+}
+
+.tilo-card-name {
+    color: rgba(236, 239, 245, 0.85);
+    font-size: 11px;
+}
