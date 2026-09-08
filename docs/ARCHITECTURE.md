@@ -51,6 +51,7 @@ configuration at install time.
 | `lib/groupSwitcher.js` | The saved arrangements overlay | Does not decide what a group is |
 | `lib/configGuard.js` | Backup/restore of foreign keys, under consent | Applies nothing without opt-in |
 | `lib/logger.js` | Prefixed logging, silent by default | - |
+| `lib/i18n.js` | Binds the translation catalogue for both install routes | - |
 | `lib/dragWatcher.js` | `grab-op-begin`/`end`, pointer polling during the grab | Draws nothing |
 | `lib/layoutPicker.js` | The picker overlay, its geometry and hit testing (St + Clutter + CSS) | Does not place windows |
 
@@ -94,7 +95,7 @@ end up under the panel.
 | 3 | Split tree model, zone editor, custom layouts | **done** |
 | 4 | Linked-divider resize, saved arrangements | **done** |
 | 5 | `.deb` packaging + apt repository | **done** |
-| 6 | Publishing: Cinnamon Spices, then the Debian pipeline | next |
+| 6 | Publishing: Cinnamon Spices submitted, Debian route documented | **done** |
 
 ## Internationalisation
 

@@ -149,7 +149,7 @@ toolchain first.
 
 Logs are in *Settings > Extensions*, in the warnings tab, or `~/.xsession-errors`. `cinnamon-looking-glass` is the interactive debugger.
 
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the constraints this design answers, with source references. [docs/RESEARCH.md](docs/RESEARCH.md) is what people actually ask for from a tiling tool and what that implies.
+[docs/PUBLISHING.md](docs/PUBLISHING.md) covers cutting a release and the route into Debian. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the constraints this design answers, with source references. [docs/RESEARCH.md](docs/RESEARCH.md) is what people actually ask for from a tiling tool and what that implies.
 
 ## License
 
