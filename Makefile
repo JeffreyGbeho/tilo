@@ -3,7 +3,7 @@ SRC     = src/$(UUID)
 USERDIR = $(HOME)/.local/share/cinnamon/extensions/$(UUID)
 SYSDIR  = $(DESTDIR)/usr/share/cinnamon/extensions/$(UUID)
 
-.PHONY: help install install-user dev-link uninstall uninstall-user check test live-test deb apt-repo restart
+.PHONY: help install install-user dev-link uninstall uninstall-user check test live-test deb apt-repo publish restart
 
 help:
 	@echo "tilo - available targets"
@@ -16,6 +16,7 @@ help:
 	@echo "  make live-test      drive every open window through every action, on the real desktop"
 	@echo "  make deb            build the .deb into dist/"
 	@echo "  make apt-repo       build a signed apt repository into public/"
+	@echo "  make publish        push the signed repository to the gh-pages branch"
 	@echo "  make restart        restart Cinnamon (session is preserved)"
 	@echo ""
 	@echo "NO target ever enables the extension: that is the user's gesture,"
@@ -70,6 +71,9 @@ deb: check test
 
 apt-repo:
 	@sh packaging/build-apt-repo.sh
+
+publish: apt-repo
+	@sh packaging/publish-pages.sh
 
 # Places every open window in every zone from every starting state and checks
 # the result against the expected rectangle. Moves the user's windows around.
