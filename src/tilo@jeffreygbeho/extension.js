@@ -1,5 +1,5 @@
 /*
- * tilo — modern window tiling for Cinnamon.
+ * tilo - modern window tiling for Cinnamon.
  * https://github.com/JeffreyGbeho/tilo
  *
  * See docs/ARCHITECTURE.md for the constraints this design answers.

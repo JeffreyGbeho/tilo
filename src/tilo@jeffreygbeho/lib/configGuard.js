@@ -1,5 +1,5 @@
 /*
- * tilo — ConfigGuard: the consent contract.
+ * tilo - ConfigGuard: the consent contract.
  *
  * tilo never modifies a configuration key belonging to anyone else without an
  * explicit gesture from the user, and always restores the original state.
@@ -13,7 +13,7 @@
  * Restore is triggered by: the user unticking the option, the extension being
  * disabled, or uninstallation. Nothing is ever left behind.
  *
- * No override is active in phase 1 — this module exists up front so that phase 2
+ * No override is active in phase 1 - this module exists up front so that phase 2
  * has no excuse to bypass the rule.
  */
 
@@ -79,7 +79,7 @@ function override(schemaId, key, newValue) {
         if (backups[id] === undefined) {
             backups[id] = settings.get_value(key).print(true);
             if (!_writeBackups(backups)) {
-                Logger.error(`Could not back up ${id} — override cancelled`);
+                Logger.error(`Could not back up ${id} - override cancelled`);
                 return false;
             }
             Logger.info(`Recorded original value for ${id}`);

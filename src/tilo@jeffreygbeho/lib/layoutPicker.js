@@ -1,5 +1,5 @@
 /*
- * tilo — the layout picker overlay.
+ * tilo - the layout picker overlay.
  *
  * Two surfaces, one widget, mirroring Windows 11:
  *   - a compact hint that drops from the top edge while a window is dragged,
@@ -48,13 +48,16 @@ class LayoutPicker {
         this._realZones = [];          /* screen coords, per layout per zone */
         this._workArea = null;
 
-        this._bar = new St.Widget({ style_class: 'tilo-bar', reactive: false });
-        this._bar.hide();
-        Main.layoutManager.addChrome(this._bar, { affectsInputRegion: false });
-
+        /* The ghost goes in first so the bar always sits above it: the preview
+           covers a whole half of the screen and would otherwise wash over the
+           picker itself. */
         this._ghost = new St.Widget({ style_class: 'tilo-ghost', reactive: false });
         this._ghost.hide();
         Main.layoutManager.addChrome(this._ghost, { affectsInputRegion: false });
+
+        this._bar = new St.Widget({ style_class: 'tilo-bar', reactive: false });
+        this._bar.hide();
+        Main.layoutManager.addChrome(this._bar, { affectsInputRegion: false });
 
         this._thumbs = [];
         this._minis = [];

@@ -6,7 +6,7 @@ SYSDIR  = $(DESTDIR)/usr/share/cinnamon/extensions/$(UUID)
 .PHONY: help install install-user dev-link uninstall uninstall-user check test live-test restart
 
 help:
-	@echo "tilo — available targets"
+	@echo "tilo - available targets"
 	@echo "  make dev-link       symlink into the user extension directory (development)"
 	@echo "  make install-user   copy into ~/.local/share/cinnamon/extensions/"
 	@echo "  make install        system-wide copy, used by the .deb (honours DESTDIR)"

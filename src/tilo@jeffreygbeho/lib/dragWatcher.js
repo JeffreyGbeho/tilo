@@ -1,5 +1,5 @@
 /*
- * tilo — drag detection.
+ * tilo - drag detection.
  *
  * Watches for a window being moved and reports the pointer position while it
  * lasts. Draws nothing and moves nothing.

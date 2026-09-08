@@ -1,5 +1,5 @@
 /*
- * tilo — test harness.
+ * tilo - test harness.
  *
  * Mimics Cinnamon's requireModule() semantics: relative paths ALWAYS resolve
  * from the extension root, never from the requiring file. Node resolves the

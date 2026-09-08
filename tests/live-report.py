@@ -34,5 +34,5 @@ if clamped:
     print(f"\nSIZE CLAMPED BY THE APP ({len(clamped)}), position still exact:")
     for app, n in Counter(r[0] for r in clamped).items():
         worst = max(int(r[6].split('=')[1]) for r in clamped if r[0] == app)
-        print(f"  {app:<16}{n:>3} cases, up to {worst}px short — resize increments")
+        print(f"  {app:<16}{n:>3} cases, up to {worst}px short - resize increments")
 sys.exit(1 if fail else 0)

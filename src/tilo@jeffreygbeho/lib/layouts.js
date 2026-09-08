@@ -1,4 +1,4 @@
-/* tilo — layout definitions. Draws nothing, moves nothing. */
+/* tilo - layout definitions. Draws nothing, moves nothing. */
 
 const Geometry = require('./lib/geometry');
 

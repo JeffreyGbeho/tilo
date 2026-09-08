@@ -1,4 +1,4 @@
-/* tilo — prefixed logging, silent by default. */
+/* tilo - prefixed logging, silent by default. */
 
 const PREFIX = '[tilo]';
 let _debug = false;

@@ -1,4 +1,4 @@
-/* tilo — rectangle arithmetic. Never touches a window. */
+/* tilo - rectangle arithmetic. Never touches a window. */
 
 const Logger = require('./lib/logger');
 

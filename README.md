@@ -1,92 +1,79 @@
 # tilo
 
-Modern window tiling for Cinnamon. As direct as Windows 11 Snap Layouts, with
-nothing else to install.
+Window tiling for Cinnamon that works the way Windows 11 snap layouts do, without installing half a desktop to get it.
 
-```
-sudo apt install tilo
-```
+![The layout picker, with the target zone previewed full size](docs/media/snap-layouts.png)
 
 ## Why
 
-Existing tiling solutions on Linux either pull in a pile of dependencies or push
-you to the command line to configure them. tilo is a native Cinnamon extension:
-one folder of JavaScript, **zero dependencies**, **zero extra processes**, and
-all configuration in the standard Cinnamon interface.
+Every tiling tool on Linux seems to ask for one of two things. Either you pull in a pile of dependencies and a background daemon, or you drop to a config file and restart your session to change a keybinding. Meanwhile Cinnamon ships with eight hardcoded snap zones and no way to add a ninth.
 
-Cinnamon's JavaScript engine is already resident in the desktop process at all
-times. tilo hooks into it: it adds no runtime, no daemon, no service.
+tilo is a Cinnamon extension. It is a folder of JavaScript that loads into the desktop process, which already runs a JavaScript engine whether you install anything or not. No daemon, no runtime, no compile step, nothing to add to your startup.
 
 ## Install
 
-**From the repositories** *(coming)*
+From source, for now:
 
-```
-sudo apt install tilo
-```
-
-**From source**
-
-```
+```sh
 git clone https://github.com/JeffreyGbeho/tilo
 cd tilo
 make install-user
 ```
 
-Then **Settings → Extensions → Tilo** to enable it.
+Then enable it in **Settings > Extensions > Tilo**.
 
-> tilo never enables itself and never changes any of your settings without your
-> explicit consent. See [the consent contract](docs/ARCHITECTURE.md).
+Packaging for apt is planned. Nothing is enabled automatically and no setting of yours is touched, so uninstalling is `make uninstall-user` and nothing else.
 
-## Snap layouts
+## Use it
 
-Drag a window toward the **middle of the top edge**. A hint drops from the top,
-expands into the layout bar as you keep going, and highlights the zone under the
-pointer — both on the thumbnail and full-size on the screen itself. Drop to
-place.
+**Drag a window toward the middle of the top edge.** A hint drops down, expands into the layout bar as you keep going, and highlights the zone under your pointer both on the thumbnail and full size on the screen. Let go to place the window.
 
-Press **`Super+Z`** for the same picker without dragging.
+**Press `Super+Z`** for the same picker without dragging.
 
-Both are configurable in *Settings → Extensions → Tilo → Configure*, including
-the distance from the top edge that reveals the bar, and an off switch for the
-drag trigger.
+Or skip the picker entirely:
 
-## Default shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `Super+Ctrl+←` | Left half |
-| `Super+Ctrl+→` | Right half |
-| `Super+Ctrl+↑` | Top half |
-| `Super+Ctrl+↓` | Bottom half |
-| `Super+Ctrl+Enter` | Fill the work area |
+| Shortcut | |
+| --- | --- |
+| `Super+Ctrl+Left` | Left half |
+| `Super+Ctrl+Right` | Right half |
+| `Super+Ctrl+Up` | Top half |
+| `Super+Ctrl+Down` | Bottom half |
+| `Super+Ctrl+Enter` | Fill the screen |
 | `Super+Ctrl+C` | Center |
-| `Super+Z` | Open the layout picker |
+| `Super+Z` | Layout picker |
 
-All rebindable in *Settings → Extensions → Tilo → Configure*.
+Every one of them is rebindable in *Settings > Extensions > Tilo > Configure*, along with gaps and the distance from the top edge that reveals the bar. If you find the drag trigger intrusive, there is a switch to turn it off and keep the rest.
 
-The defaults only use free combinations: `Super+arrows` belongs to Cinnamon's
-native snap and tilo leaves it alone.
+The defaults deliberately avoid `Super+arrows`, which belongs to Cinnamon's own snap. Nothing tilo binds by default was already taken by anything else on the system.
 
-## What tilo does not do
+## It will not touch your settings
 
-- It never writes to `org.cinnamon.*` without explicit consent.
-- It does not add itself to your enabled extensions.
-- It leaves nothing behind: `disable()` restores the original state.
+Plenty of extensions in this space overwrite desktop keybindings to make room for themselves and leave them broken after you uninstall. tilo does not write to `org.cinnamon.*` at all. Its own settings live in its own schema.
+
+If a future feature ever needs to take over a key that belongs to Cinnamon, it goes through `ConfigGuard`: you opt in explicitly, the old value is recorded first, and it is put back when you turn the option off, disable the extension, or remove it.
+
+## Known limits
+
+Apps that declare resize increments, GNOME Terminal being the usual one, round their own size down to whole character cells. tilo puts them at the exact corner of the zone and the leftover, up to about 14px, falls to the bottom right. No window manager can override this. `make live-test` reports it separately from real failures for exactly that reason.
+
+Everything else is X11 only for now, which is what Cinnamon 6.4 runs.
 
 ## Development
 
-```
-make dev-link     # symlink into the extension directory
-make check        # JS + JSON syntax validation
-make test         # test harness using Cinnamon's module resolution
-make restart      # restart Cinnamon (Ctrl+Alt+Escape does the same)
+```sh
+make dev-link     # symlink the source into the extension directory
+make test         # offline harness
+make live-test    # drive every open window through every action, for real
+make restart      # restart Cinnamon, same as Ctrl+Alt+Escape
 ```
 
-Log: *Settings → Extensions → ⚠ tab*, or `~/.xsession-errors`.
-Built-in debugger: `cinnamon-looking-glass`.
+`make test` reproduces Cinnamon's module resolution rather than Node's, because the two disagree about relative paths and Node will happily pass code that Cinnamon refuses to load.
 
-Architecture and technical constraints: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`make live-test` places every open window in every zone from every starting state and checks the result against the expected rectangle. It moves your windows around while it runs.
+
+Logs are in *Settings > Extensions*, in the warnings tab, or `~/.xsession-errors`. `cinnamon-looking-glass` is the interactive debugger.
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the constraints this design answers, with source references. [docs/RESEARCH.md](docs/RESEARCH.md) is what people actually ask for from a tiling tool and what that implies.
 
 ## License
 
