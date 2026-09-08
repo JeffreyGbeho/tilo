@@ -33,6 +33,17 @@ install:
 	install -m 644 $(SRC)/settings-schema.json $(SYSDIR)/
 	install -m 644 $(SRC)/stylesheet.css       $(SYSDIR)/
 	install -m 644 $(SRC)/lib/*.js             $(SYSDIR)/lib/
+	@# Translations. The .pot is a template and belongs in the source tree
+	@# only; a binary package ships compiled catalogues. Cinnamon's own
+	@# installer compiles po/ inside the xlet, but a system install has to
+	@# put them where gettext looks by default.
+	@for po in $(SRC)/po/*.po; do \
+		[ -e "$$po" ] || continue; \
+		lang=$$(basename $$po .po); \
+		install -d $(DESTDIR)/usr/share/locale/$$lang/LC_MESSAGES; \
+		msgfmt -o $(DESTDIR)/usr/share/locale/$$lang/LC_MESSAGES/$(UUID).mo $$po; \
+		echo "  translation: $$lang"; \
+	done
 
 install-user:
 	mkdir -p $(USERDIR)
