@@ -20,6 +20,7 @@ const { LayoutPicker } = require('./lib/layoutPicker');
 const { ZoneEditor } = require('./lib/zoneEditor');
 const Tree = require('./lib/layoutTree');
 const { TileGroups } = require('./lib/tileGroup');
+const { _ } = require('./lib/i18n');
 const SavedGroups = require('./lib/savedGroups');
 const { GroupSwitcher } = require('./lib/groupSwitcher');
 
@@ -262,7 +263,7 @@ class Tilo {
         if (!snapshot) return;
 
         const existing = SavedGroups.load(this.savedGroups);
-        const group = SavedGroups.create(snapshot, `Group ${existing.length + 1}`);
+        const group = SavedGroups.create(snapshot, `${_('Group')} ${existing.length + 1}`);
         this._settings.setValue('saved-groups', existing.concat([group]));
         Logger.info(`saved "${group.name}" with ${group.windows.length} window(s)`);
     }
@@ -307,7 +308,7 @@ class Tilo {
         const existing = Layouts.getCustom();
         const layout = {
             id: `custom-${Date.now()}`,
-            name: `Custom ${existing.length + 1}`,
+            name: `${_('Custom')} ${existing.length + 1}`,
             tree
         };
         const next = existing.concat([layout]);

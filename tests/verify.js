@@ -26,7 +26,9 @@ const STUBS = {
                GrabOp: { MOVING: 1, KEYBOARD_MOVING: 2 } },
   'gi.Gio': { File: { new_for_path: () => ({ query_exists: () => false }) } },
   'gi.GLib': { build_filenamev: a => a.join('/'), get_user_config_dir: () => '/tmp/x',
-               mkdir_with_parents: () => 0, file_set_contents: () => true }
+               get_home_dir: () => '/tmp/x', mkdir_with_parents: () => 0,
+               file_set_contents: () => true },
+  'gettext': { bindtextdomain() {}, dgettext: (d, s) => s, gettext: s => s }
 };
 
 function cinnamonRequire(request) {
@@ -57,7 +59,7 @@ const ok = (c, label, detail = '') => {
 console.log('Module loading (Cinnamon resolution rules)');
 for (const m of ['./extension', './lib/logger', './lib/geometry', './lib/windowMover',
                  './lib/layouts', './lib/configGuard', './lib/dragWatcher',
-                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor', './lib/tileGroup', './lib/savedGroups', './lib/groupSwitcher']) {
+                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor', './lib/tileGroup', './lib/savedGroups', './lib/groupSwitcher', './lib/i18n']) {
   try { cinnamonRequire(m); ok(true, `loads ${m}`); }
   catch (e) { ok(false, `loads ${m}`, String(e.message).split('\n')[0]); }
 }
@@ -155,6 +157,12 @@ Object.keys(EXPECTED).forEach(id => {
 });
 ok(JSON.stringify(Layouts.layoutById('main-side').zones[0]) === JSON.stringify([0, 0, 2 / 3, 1]),
    'main-side keeps its two thirds column');
+
+console.log('\nTranslation');
+const I18n = cinnamonRequire('./lib/i18n');
+ok(typeof I18n._ === 'function', 'i18n exports a translation function');
+ok(I18n._('Two halves') === 'Two halves', 'an untranslated string comes back unchanged');
+ok(Layouts.layoutById('halves').name === 'Two halves', 'layout names go through it');
 
 console.log('\nCustom layouts');
 Layouts.setCustom([{ id: 'mine', name: 'Mine', tree: branch('col', [leaf(), leaf(), leaf()]) }]);

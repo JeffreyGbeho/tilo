@@ -3,7 +3,7 @@ SRC     = src/$(UUID)
 USERDIR = $(HOME)/.local/share/cinnamon/extensions/$(UUID)
 SYSDIR  = $(DESTDIR)/usr/share/cinnamon/extensions/$(UUID)
 
-.PHONY: help install install-user dev-link uninstall uninstall-user check test live-test deb apt-repo publish restart
+.PHONY: help install install-user dev-link uninstall uninstall-user check test live-test deb apt-repo pot spices publish restart
 
 help:
 	@echo "tilo - available targets"
@@ -14,6 +14,8 @@ help:
 	@echo "  make check          validate JS and JSON syntax"
 	@echo "  make test           run the test harness (Cinnamon module resolution)"
 	@echo "  make live-test      drive every open window through every action, on the real desktop"
+	@echo "  make pot            regenerate the translation template"
+	@echo "  make spices         build the Cinnamon Spices submission tree"
 	@echo "  make deb            build the .deb into dist/"
 	@echo "  make apt-repo       build a signed apt repository into public/"
 	@echo "  make publish        push the signed repository to the gh-pages branch"
@@ -65,6 +67,12 @@ check:
 
 test:
 	@node tests/verify.js $(SRC)
+
+pot:
+	@sh packaging/make-pot.sh
+
+spices: pot check test
+	@sh packaging/build-spices.sh
 
 deb: check test
 	@sh packaging/build-deb.sh

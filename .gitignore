@@ -8,3 +8,4 @@ debian/*.log
 debian/debhelper-build-stamp
 dist/
 public/
+build/

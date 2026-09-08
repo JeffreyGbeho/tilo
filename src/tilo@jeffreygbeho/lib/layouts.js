@@ -2,6 +2,7 @@
 
 const Tree = require('./lib/layoutTree');
 const Geometry = require('./lib/geometry');
+const { _ } = require('./lib/i18n');
 
 const { leaf, branch } = Tree;
 const row = (children, weights) => branch('row', children, weights);
@@ -27,19 +28,19 @@ const QUICK = {
 
 /* The layouts offered in the picker, as split trees. See layoutTree.js. */
 const BUILTIN = [
-    { id: 'halves', name: 'Two halves',
+    { id: 'halves', name: _('Two halves'),
       tree: row([leaf(), leaf()]) },
 
-    { id: 'thirds', name: 'Three columns',
+    { id: 'thirds', name: _('Three columns'),
       tree: row([leaf(), leaf(), leaf()]) },
 
-    { id: 'main-side', name: 'Main plus two',
+    { id: 'main-side', name: _('Main plus two'),
       tree: row([leaf(), col([leaf(), leaf()])], [2, 1]) },
 
-    { id: 'quarters', name: 'Four quarters',
+    { id: 'quarters', name: _('Four quarters'),
       tree: col([row([leaf(), leaf()]), row([leaf(), leaf()])]) },
 
-    { id: 'grid-4x3', name: 'Grid 4 x 3',
+    { id: 'grid-4x3', name: _('Grid 4 x 3'),
       tree: col([
           row([leaf(), leaf(), leaf(), leaf()]),
           row([leaf(), leaf(), leaf(), leaf()]),
@@ -54,7 +55,7 @@ let custom = [];
 function setCustom(list) {
     custom = (Array.isArray(list) ? list : [])
         .filter(l => l && typeof l.id === 'string' && Tree.isValid(l.tree))
-        .map(l => ({ id: l.id, name: l.name || 'Custom', tree: l.tree, custom: true }));
+        .map(l => ({ id: l.id, name: l.name || _('Custom'), tree: l.tree, custom: true }));
 }
 
 function getCustom() {

@@ -18,9 +18,13 @@ const Clutter = require('gi.Clutter');
 const Main = require('ui.main');
 const Tree = require('./lib/layoutTree');
 const Logger = require('./lib/logger');
+const { _ } = require('./lib/i18n');
 
-const HELP = 'Click to split side by side   .   Ctrl+click to stack   .   ' +
-             'Right click to remove   .   Enter to save   .   Esc to cancel';
+function helpText() {
+    return [_('Click to split side by side'), _('Ctrl+click to stack'),
+            _('Right click to remove'), _('Enter to save'), _('Esc to cancel')]
+           .join('   .   ');
+}
 
 class ZoneEditor {
     /* handlers: { onSave(tree), onCancel() } */
@@ -46,7 +50,7 @@ class ZoneEditor {
         this._container.set_size(workArea.width, workArea.height);
         Main.layoutManager.addChrome(this._container, { affectsInputRegion: true });
 
-        this._help = new St.Label({ style_class: 'tilo-editor-help', text: HELP });
+        this._help = new St.Label({ style_class: 'tilo-editor-help', text: helpText() });
         this._container.add_child(this._help);
 
         this._rebuild();

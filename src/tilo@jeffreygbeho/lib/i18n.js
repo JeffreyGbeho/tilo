@@ -1,0 +1,24 @@
+/*
+ * tilo - translation.
+ *
+ * Strings live in English in the source and come back translated at runtime.
+ * The two install routes put the catalogues in different places: the Spices
+ * installer writes into the user's locale directory, the .deb into the system
+ * one. Bind the user directory explicitly and fall back to the system lookup,
+ * so the same build works either way.
+ */
+
+const GLib = require('gi.GLib');
+const Gettext = require('gettext');
+
+const UUID = 'tilo@jeffreygbeho';
+
+Gettext.bindtextdomain(UUID, GLib.get_home_dir() + '/.local/share/locale');
+
+function _(text) {
+    const fromXlet = Gettext.dgettext(UUID, text);
+    if (fromXlet !== text) return fromXlet;
+    return Gettext.gettext(text);
+}
+
+module.exports = { _, UUID };

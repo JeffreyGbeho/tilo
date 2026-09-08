@@ -14,6 +14,7 @@ const Clutter = require('gi.Clutter');
 const Main = require('ui.main');
 const Tree = require('./lib/layoutTree');
 const SavedGroups = require('./lib/savedGroups');
+const { _ } = require('./lib/i18n');
 
 const CARD_W = 168;
 const CARD_H = 142;
@@ -22,7 +23,10 @@ const PANEL_PAD = 14;
 const PREVIEW_H = 86;
 const MINI_GAP = 3;
 
-const HELP = 'Click to restore   .   Right click to forget   .   Esc to close';
+function helpText() {
+    return [_('Click to restore'), _('Right click to forget'), _('Esc to close')]
+           .join('   .   ');
+}
 
 class GroupSwitcher {
     /* handlers: { getGroups(), canSave(), onRestore(group), onDelete(group), onSave() } */
@@ -64,7 +68,7 @@ class GroupSwitcher {
             panel.add_child(this._saveCard(PANEL_PAD + groups.length * (CARD_W + CARD_GAP)));
         }
 
-        const help = new St.Label({ style_class: 'tilo-editor-help', text: HELP });
+        const help = new St.Label({ style_class: 'tilo-editor-help', text: helpText() });
         this._container.add_child(help);
         const [, helpW] = help.get_preferred_width(-1);
         const [, helpH] = help.get_preferred_height(-1);
@@ -133,7 +137,7 @@ class GroupSwitcher {
         card.set_size(CARD_W, CARD_H);
 
         const label = new St.Label({ style_class: 'tilo-card-name',
-                                     text: 'Save what is on screen' });
+                                     text: _('Save what is on screen') });
         label.set_position(10, PREVIEW_H + 16);
         card.add_child(label);
 
