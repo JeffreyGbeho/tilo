@@ -1,0 +1,41 @@
+name: metrics
+
+# GitHub keeps traffic views, clones and referrers for fourteen days and then
+# destroys them. This appends a row a day so the history survives.
+#
+# It reads counters that GitHub and the Cinnamon Spices catalogue already hold.
+# Nothing is collected from anyone's machine: the extension makes no network
+# calls, and it never will.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append today's row
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p docs
+          if [ ! -f docs/metrics.csv ]; then
+            HEADER=1 python3 tools/metrics.py >> docs/metrics.csv
+          else
+            python3 tools/metrics.py >> docs/metrics.csv
+          fi
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/metrics.csv
+          git diff --staged --quiet || git commit -m "metrics: $(date -u +%F)"
+          git push
