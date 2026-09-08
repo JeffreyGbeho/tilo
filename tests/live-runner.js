@@ -43,18 +43,29 @@
     Mainloop.timeout_add(320, () => {
       const f = cb(a);
       if (f) f();
-      Mainloop.timeout_add(420, () => {
+      /*
+       * Measure, and if the position is still off give the application one more
+       * settle window before believing it. Some apps answer a resize late, and
+       * a fixed deadline turns that into a phantom failure that hides the real
+       * ones.
+       */
+      const measure = (retriesLeft) => {
         const wa = w.get_workspace().get_work_area_for_monitor(w.get_monitor());
         const e = expected(a, wa), r = w.get_frame_rect();
         const dp = Math.max(Math.abs(r.x - e.x), Math.abs(r.y - e.y));
         const ds = Math.max(Math.abs(r.width - e.width), Math.abs(r.height - e.height));
+
+        if (dp > 2 && retriesLeft > 0) {
+          Mainloop.timeout_add(400, () => { measure(retriesLeft - 1); return false; });
+          return;
+        }
         out.lines.push([w.get_wm_class(), s.name, a,
                         r.width + 'x' + r.height + '+' + r.x + '+' + r.y,
                         e.width + 'x' + e.height + '+' + e.x + '+' + e.y,
                         'dpos=' + dp, 'dsize=' + ds].join('|'));
         step();
-        return false;
-      });
+      };
+      Mainloop.timeout_add(420, () => { measure(1); return false; });
       return false;
     });
   }

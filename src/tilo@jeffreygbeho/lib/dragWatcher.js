@@ -27,6 +27,7 @@ const RESIZE_OPS = Object.keys(Meta.GrabOp)
 
 class DragWatcher {
     /* handlers: {
+     *   onDragStart(window),
      *   onDragMove(window, x, y),
      *   onDragEnd(window, x, y),
      *   onResizeEnd(window, startRect, endRect)
@@ -99,6 +100,15 @@ class DragWatcher {
         this._window = window;
         this._startPolling();
         Logger.debug(`drag started on "${window.get_title()}"`);
+
+        /*
+         * Announced at the start rather than when the pointer nears an edge.
+         * The picker only used to appear once you were already 48px from the
+         * top, which meant nobody found out it existed unless they happened to
+         * drag a window up there. Telling you at the moment you pick a window
+         * up is the whole point.
+         */
+        if (this._handlers.onDragStart) this._handlers.onDragStart(window);
     }
 
     _onGrabEnd(args) {

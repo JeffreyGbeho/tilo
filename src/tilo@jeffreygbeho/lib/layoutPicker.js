@@ -28,9 +28,20 @@ const THUMB_GAP = 10;
 const BAR_PAD = 10;
 const MINI_GAP = 3;
 
-/* The collapsed hint: a small handle, like a drawer pull. */
-const HINT_W = 96;
-const HINT_H = 8;
+/*
+ * The teaser: a tab that hangs from the top edge for the whole of a drag.
+ *
+ * This is the discovery surface, and the reason it exists is that every zone
+ * tool in this category hides behind a gesture nobody is told about. Showing a
+ * few miniature layouts the moment a window is picked up says what is available
+ * without a word of text, and costs nothing to ignore.
+ */
+const TEASER_THUMB_W = 46;
+const TEASER_THUMB_H = 28;
+const TEASER_GAP = 6;
+const TEASER_PAD = 8;
+const TEASER_COUNT = 3;
+const TEASER_MINI_GAP = 2;
 
 /* Fluent's published durations. Entrance is deliberately slower than exit. */
 const SHOW_MS = 250;
@@ -59,6 +70,10 @@ class LayoutPicker {
         this._bar.hide();
         Main.layoutManager.addChrome(this._bar, { affectsInputRegion: false });
 
+        this._teaser = new St.Widget({ style_class: 'tilo-teaser', reactive: false });
+        this._teaser.hide();
+        Main.layoutManager.addChrome(this._teaser, { affectsInputRegion: false });
+
         this._thumbs = [];
         this._minis = [];
     }
@@ -66,11 +81,13 @@ class LayoutPicker {
     destroy() {
         this._clearThumbs();
         if (this._bar) { this._bar.destroy(); this._bar = null; }
+        if (this._teaser) { this._teaser.destroy(); this._teaser = null; }
         if (this._ghost) { this._ghost.destroy(); this._ghost = null; }
     }
 
     get visible() { return this._state !== 'hidden'; }
     get expanded() { return this._state === 'expanded'; }
+    get teasing() { return this._state === 'teaser'; }
 
     /* Below this line the pointer has clearly left the bar. */
     get bottomEdge() { return (this._barY || 0) + (this._barH || 0) + 60; }
@@ -163,36 +180,88 @@ class LayoutPicker {
 
     /* ---------------------------------------------------------------- states */
 
-    showHint(workArea) {
+    _buildTeaser(workArea) {
+        this._teaser.destroy_all_children();
+
+        const layouts = Layouts.all().slice(0, TEASER_COUNT);
+        const width = layouts.length * TEASER_THUMB_W +
+                      (layouts.length - 1) * TEASER_GAP + 2 * TEASER_PAD;
+        const height = TEASER_THUMB_H + 2 * TEASER_PAD;
+
+        layouts.forEach((layout, i) => {
+            const thumb = new St.Widget({ style_class: 'tilo-teaser-thumb' });
+            thumb.set_position(TEASER_PAD + i * (TEASER_THUMB_W + TEASER_GAP), TEASER_PAD);
+            thumb.set_size(TEASER_THUMB_W, TEASER_THUMB_H);
+            this._teaser.add_child(thumb);
+
+            layout.zones.forEach(([fx, fy, fw, fh]) => {
+                const mini = new St.Widget({ style_class: 'tilo-teaser-mini' });
+                mini.set_position(Math.round(fx * TEASER_THUMB_W) + TEASER_MINI_GAP / 2,
+                                  Math.round(fy * TEASER_THUMB_H) + TEASER_MINI_GAP / 2);
+                mini.set_size(Math.max(1, Math.round(fw * TEASER_THUMB_W) - TEASER_MINI_GAP),
+                              Math.max(1, Math.round(fh * TEASER_THUMB_H) - TEASER_MINI_GAP));
+                thumb.add_child(mini);
+            });
+        });
+
+        this._teaserW = width;
+        this._teaserH = height;
+        this._teaserX = Math.round(workArea.x + (workArea.width - width) / 2);
+        this._teaserY = workArea.y;
+        this._teaser.set_size(width, height);
+    }
+
+    /* Shown for the whole drag, from the moment the window is picked up. */
+    showTeaser(workArea) {
         if (this._state !== 'hidden') return;
         this._build(workArea);
+        this._buildTeaser(workArea);
 
-        this._state = 'hint';
-        this._bar.remove_all_transitions();
-        this._bar.set_position(Math.round(this._workArea.x +
-                                          (this._workArea.width - HINT_W) / 2),
-                               this._workArea.y);
-        this._bar.set_size(HINT_W, HINT_H);
-        this._bar.opacity = 0;
-        this._bar.add_style_class_name('tilo-bar-hint');
-        this._thumbs.forEach(t => t.hide());
-        this._bar.show();
-        this._bar.ease({ opacity: 255, duration: SHOW_MS,
-                         mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        this._state = 'teaser';
+        this._teaser.remove_all_transitions();
+        this._teaser.set_position(this._teaserX, this._teaserY - this._teaserH);
+        this._teaser.opacity = 0;
+        this._teaser.show();
+        this._teaser.ease({ y: this._teaserY, opacity: 255, duration: SHOW_MS,
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD });
     }
 
     expand() {
-        if (this._state !== 'hint') return;
+        if (this._state !== 'teaser') return;
         this._state = 'expanded';
-        this._bar.remove_style_class_name('tilo-bar-hint');
-        this._thumbs.forEach(t => t.show());
+
+        this._teaser.remove_all_transitions();
+        this._teaser.ease({ opacity: 0, duration: HIDE_MS,
+                            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                            onComplete: () => { if (this._teaser) this._teaser.hide(); } });
+
         this._bar.remove_all_transitions();
-        this._bar.ease({
-            x: this._barX, y: this._barY,
-            width: this._barW, height: this._barH,
-            opacity: 255, duration: SHOW_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD
-        });
+        this._bar.set_position(this._barX, this._barY - 10);
+        this._bar.set_size(this._barW, this._barH);
+        this._bar.opacity = 0;
+        this._bar.show();
+        this._bar.ease({ y: this._barY, opacity: 255, duration: SHOW_MS,
+                         mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+    }
+
+    /* The pointer left the top of the screen but the drag is still going, so
+       fall back to the teaser rather than vanishing entirely. */
+    collapse() {
+        if (this._state !== 'expanded') return;
+        this._state = 'teaser';
+        this._setHovered(null);
+        this._hideGhost();
+
+        this._bar.remove_all_transitions();
+        this._bar.ease({ opacity: 0, duration: HIDE_MS,
+                         mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                         onComplete: () => { if (this._bar) this._bar.hide(); } });
+
+        this._teaser.remove_all_transitions();
+        this._teaser.set_position(this._teaserX, this._teaserY);
+        this._teaser.show();
+        this._teaser.ease({ opacity: 255, duration: SHOW_MS,
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD });
     }
 
     /* Summoned by shortcut: straight to the expanded state, no hint stage. */
@@ -202,8 +271,6 @@ class LayoutPicker {
 
         this._state = 'expanded';
         this._bar.remove_all_transitions();
-        this._bar.remove_style_class_name('tilo-bar-hint');
-        this._thumbs.forEach(t => t.show());
         this._bar.set_position(this._barX, this._barY - 12);
         this._bar.set_size(this._barW, this._barH);
         this._bar.opacity = 0;
@@ -217,6 +284,13 @@ class LayoutPicker {
         this._state = 'hidden';
         this._setHovered(null);
         this._hideGhost();
+
+        this._teaser.remove_all_transitions();
+        this._teaser.ease({
+            opacity: 0, duration: HIDE_MS,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onComplete: () => { if (this._teaser) this._teaser.hide(); }
+        });
 
         this._bar.remove_all_transitions();
         this._bar.ease({
@@ -251,7 +325,7 @@ class LayoutPicker {
         if (this._state === 'hidden') return false;
         const r = this._state === 'expanded'
             ? { x: this._barX, y: this._barY, width: this._barW, height: this._barH }
-            : { x: this._barX, y: this._barY, width: this._barW, height: THUMB_H };
+            : { x: this._teaserX, y: this._teaserY, width: this._teaserW, height: this._teaserH };
         return Geometry.contains(r, x, y);
     }
 

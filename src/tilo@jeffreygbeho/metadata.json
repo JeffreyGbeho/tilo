@@ -2,7 +2,7 @@
     "uuid": "tilo@jeffreygbeho",
     "name": "Tilo",
     "description": "Modern window tiling for Cinnamon - grids, zones and shortcuts, with zero dependencies.",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "cinnamon-version": [
         "6.0",
         "6.2",

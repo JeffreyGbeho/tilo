@@ -95,6 +95,7 @@ class Tilo {
         });
 
         this._drag = new DragWatcher({
+            onDragStart: w => this._onDragStart(w),
             onDragMove: (w, x, y) => this._onDragMove(w, x, y),
             onDragEnd: (w, x, y) => this._onDragEnd(w, x, y),
             onResizeEnd: (w, from, to) => this._onResizeEnd(w, from, to)
@@ -190,32 +191,36 @@ class Tilo {
 
     /* ------------------------------------------------------ drag to the top */
 
-    _onDragMove(window, x, y) {
+    /*
+     * The tab appears as soon as a window is picked up, wherever the pointer
+     * is. Waiting until it neared the top edge meant the feature only ever
+     * found people who already knew it was there.
+     */
+    _onDragStart(window) {
         if (!this.dragToTop || !WindowMover.isTileable(window)) return;
+        this._picker.showTeaser(Geometry.workAreaFor(window));
+    }
+
+    _onDragMove(window, x, y) {
+        if (!this._picker.visible) return;
 
         const workArea = Geometry.workAreaFor(window);
         const depth = y - workArea.y;
-        const expandBand = this.revealThreshold;
-        const hintBand = expandBand * 2;
 
         if (this._picker.expanded) {
             this._picker.updatePointer(x, y);
             if (!this._picker.containsPointer(x, y) && y > this._picker.bottomEdge) {
-                this._picker.hide();
+                this._picker.collapse();
             }
             return;
         }
 
-        if (this._picker.visible) {
-            if (depth <= expandBand) this._picker.expand();
-            else if (depth > hintBand) this._picker.hide();
-            return;
-        }
-
+        /* Only the middle of the top edge opens the bar, so dragging a window
+           into a top corner still means "corner", as it does everywhere else. */
         const centerLeft = workArea.x + workArea.width * CENTER_BAND;
         const centerRight = workArea.x + workArea.width * (1 - CENTER_BAND);
-        if (depth <= hintBand && x >= centerLeft && x <= centerRight) {
-            this._picker.showHint(workArea);
+        if (depth <= this.revealThreshold && x >= centerLeft && x <= centerRight) {
+            this._picker.expand();
         }
     }
 

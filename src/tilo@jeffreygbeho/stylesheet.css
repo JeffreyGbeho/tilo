@@ -18,12 +18,27 @@
     box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }
 
-/* The collapsed hint reads as a drawer pull, not a panel. */
-.tilo-bar-hint {
-    background-color: rgba(24, 25, 28, 0.97);
-    border: none;
-    border-radius: 0 0 6px 6px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+/*
+ * The teaser hangs from the top edge for the whole drag. Square at the top so
+ * it reads as attached to the screen edge rather than floating, and quieter
+ * than the bar it leads to, because it is an offer and not a demand.
+ */
+.tilo-teaser {
+    background-color: rgba(24, 25, 28, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.tilo-teaser-thumb {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+}
+
+.tilo-teaser-mini {
+    background-color: rgba(236, 239, 245, 0.42);
+    border-radius: 2px;
 }
 
 /* One thumbnail is one miniature of the whole screen. */

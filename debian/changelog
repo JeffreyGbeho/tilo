@@ -1,3 +1,10 @@
+tilo (0.5.0-1) unstable; urgency=medium
+
+  * The layout tab now appears as soon as a window is picked up, rather than
+    only once the pointer nears the top edge.
+
+ -- Jeffrey Gbeho <jeff.gbeho@gmail.com>  Tue, 08 Sep 2026 18:17:53 -0400
+
 tilo (0.4.0-1) unstable; urgency=medium
 
   * Initial release.
