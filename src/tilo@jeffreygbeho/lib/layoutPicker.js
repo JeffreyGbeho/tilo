@@ -43,6 +43,13 @@ const TEASER_PAD = 8;
 const TEASER_COUNT = 3;
 const TEASER_MINI_GAP = 2;
 
+/*
+ * The tab is a target, not just a sign. Inflated on the sides and underneath so
+ * hitting a 44px strip does not require aiming: anyone who moves the window
+ * towards it has already said what they want.
+ */
+const TEASER_HIT_MARGIN = 26;
+
 /* Fluent's published durations. Entrance is deliberately slower than exit. */
 const SHOW_MS = 250;
 const HIDE_MS = 167;
@@ -318,6 +325,17 @@ class LayoutPicker {
         }
         this._setHovered(null);
         return false;
+    }
+
+    /* Is the pointer on the tab, or close enough underneath it to count? */
+    overTeaser(x, y) {
+        if (this._state !== 'teaser') return false;
+        return Geometry.contains({
+            x: this._teaserX - TEASER_HIT_MARGIN,
+            y: this._teaserY,
+            width: this._teaserW + 2 * TEASER_HIT_MARGIN,
+            height: this._teaserH + TEASER_HIT_MARGIN
+        }, x, y);
     }
 
     /* Is the pointer inside the bar's own rectangle? */

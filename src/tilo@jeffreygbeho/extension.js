@@ -215,11 +215,21 @@ class Tilo {
             return;
         }
 
-        /* Only the middle of the top edge opens the bar, so dragging a window
-           into a top corner still means "corner", as it does everywhere else. */
+        /*
+         * Two ways in. Touching the tab opens it, which is what anyone who sees
+         * it will try first. Reaching the top edge anywhere in the middle also
+         * opens it, for people who already know the gesture and just throw the
+         * window up there.
+         *
+         * The corners stay out of it, so dragging a window into a top corner
+         * still means "corner" as it does everywhere else.
+         */
         const centerLeft = workArea.x + workArea.width * CENTER_BAND;
         const centerRight = workArea.x + workArea.width * (1 - CENTER_BAND);
-        if (depth <= this.revealThreshold && x >= centerLeft && x <= centerRight) {
+        const atTopEdge = depth <= this.revealThreshold &&
+                          x >= centerLeft && x <= centerRight;
+
+        if (this._picker.overTeaser(x, y) || atTopEdge) {
             this._picker.expand();
         }
     }

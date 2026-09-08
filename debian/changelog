@@ -1,3 +1,10 @@
+tilo (0.5.1-1) unstable; urgency=medium
+
+  * Touching the layout tab now opens the picker. It only responded within 24px
+    of the screen edge, which is less than the tab's own height.
+
+ -- Jeffrey Gbeho <jeff.gbeho@gmail.com>  Tue, 08 Sep 2026 18:32:54 -0400
+
 tilo (0.5.0-1) unstable; urgency=medium
 
   * The layout tab now appears as soon as a window is picked up, rather than

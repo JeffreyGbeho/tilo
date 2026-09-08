@@ -1,3 +1,9 @@
+### 0.5.1
+
+* Touching the layout tab opens the picker. It previously only responded within
+  24px of the screen edge, which is less than the height of the tab itself, so
+  hovering the thing did nothing.
+
 ### 0.5.0
 
 * The layout tab now appears as soon as a window is picked up, anywhere on
