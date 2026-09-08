@@ -30,6 +30,22 @@ Packaging for apt is planned. Nothing is enabled automatically and no setting of
 
 **Press `Super+Z`** for the same picker without dragging.
 
+## Draw your own zones
+
+![The zone editor, cutting the screen into four](docs/media/zone-editor.png)
+
+Press `Super+Shift+Z`. The screen becomes one zone. Click it to cut it side by
+side, Ctrl+click to stack, right click to remove one. Enter saves the result as
+a layout, Esc throws it away. Saved layouts show up in the picker next to the
+built-in ones.
+
+Layouts are stored as a split tree rather than a list of rectangles, which is
+how KWin models its own tiling. Zones have no coordinates of their own, so they
+cannot overlap, drift off screen, or leave a hole. Splitting is a local edit and
+dragging a border is one number changing.
+
+There is a button in the settings to delete every custom layout at once.
+
 Or skip the picker entirely:
 
 | Shortcut | |
@@ -41,6 +57,7 @@ Or skip the picker entirely:
 | `Super+Ctrl+Enter` | Fill the screen |
 | `Super+Ctrl+C` | Center |
 | `Super+Z` | Layout picker |
+| `Super+Shift+Z` | Zone editor |
 
 Every one of them is rebindable in *Settings > Extensions > Tilo > Configure*, along with gaps and the distance from the top edge that reveals the bar. If you find the drag trigger intrusive, there is a switch to turn it off and keep the rest.
 

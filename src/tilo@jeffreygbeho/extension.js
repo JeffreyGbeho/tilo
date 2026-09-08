@@ -17,6 +17,8 @@ const Layouts = require('./lib/layouts');
 const ConfigGuard = require('./lib/configGuard');
 const { DragWatcher } = require('./lib/dragWatcher');
 const { LayoutPicker } = require('./lib/layoutPicker');
+const { ZoneEditor } = require('./lib/zoneEditor');
+const Tree = require('./lib/layoutTree');
 
 const UUID = 'tilo@jeffreygbeho';
 
@@ -42,6 +44,7 @@ class Tilo {
         this._settings = null;
         this._registered = [];
         this._picker = null;
+        this._editor = null;
         this._drag = null;
         this._keyPollId = 0;
         this._keyMode = false;
@@ -55,7 +58,10 @@ class Tilo {
         ['inner-gap', 'outer-gap', 'debug', 'drag-to-top', 'reveal-threshold']
             .forEach(key => this._settings.bind(key, this._propertyFor(key),
                                                 () => this._onSettingsChanged()));
-        BINDINGS.concat([{ setting: 'kb-picker' }]).forEach(({ setting }) => {
+        this._settings.bind('custom-layouts', 'customLayouts',
+                            () => Layouts.setCustom(this.customLayouts));
+        Layouts.setCustom(this.customLayouts);
+        BINDINGS.concat([{ setting: 'kb-picker' }, { setting: 'kb-editor' }]).forEach(({ setting }) => {
             this._settings.bind(setting, this._propertyFor(setting),
                                 () => this._rebindHotkeys());
         });
@@ -65,6 +71,11 @@ class Tilo {
         this._picker = new LayoutPicker(() => ({
             inner: this.innerGap, outer: this.outerGap
         }));
+
+        this._editor = new ZoneEditor({
+            onSave: tree => this._saveLayout(tree),
+            onCancel: () => Logger.debug('editor cancelled')
+        });
 
         this._drag = new DragWatcher({
             onDragMove: (w, x, y) => this._onDragMove(w, x, y),
@@ -86,6 +97,7 @@ class Tilo {
         this._stopKeyMode();
         this._unbindHotkeys();
 
+        if (this._editor) { this._editor.close(); this._editor = null; }
         if (this._drag) { this._drag.disable(); this._drag = null; }
         if (this._picker) { this._picker.destroy(); this._picker = null; }
         WindowMover.reset();
@@ -122,6 +134,7 @@ class Tilo {
                            () => this._snapTo(position));
         });
         this._register('tilo-picker', this.kbPicker, () => this._toggleKeyMode());
+        this._register('tilo-editor', this.kbEditor, () => this._toggleEditor());
     }
 
     _register(name, combination, callback) {
@@ -189,6 +202,53 @@ class Tilo {
         const zone = this._picker ? this._picker.hoveredZone() : null;
         if (this._picker) this._picker.hide();
         if (zone) WindowMover.place(window, zone);
+    }
+
+    /* --------------------------------------------------------- zone editor */
+
+    _toggleEditor() {
+        if (!this._editor) return;
+        if (this._editor.open) { this._editor.close(); return; }
+
+        this._stopKeyMode();
+        /* Start from one zone covering the screen, and let the user cut it up.
+           A blank canvas needs no explanation; a preset would need undo. */
+        this._editor.show(this._currentWorkArea(), Tree.leaf());
+    }
+
+    _saveLayout(tree) {
+        if (Tree.countZones(tree) < 2) {
+            Logger.debug('layout with a single zone discarded');
+            return;
+        }
+
+        const existing = Layouts.getCustom();
+        const layout = {
+            id: `custom-${Date.now()}`,
+            name: `Custom ${existing.length + 1}`,
+            tree
+        };
+        const next = existing.concat([layout]);
+
+        Layouts.setCustom(next);
+        this._settings.setValue('custom-layouts', next);
+        Logger.info(`saved "${layout.name}" with ${Tree.countZones(tree)} zones`);
+    }
+
+    /* Bound to the button in the settings window. */
+    clearCustomLayouts() {
+        Layouts.setCustom([]);
+        this._settings.setValue('custom-layouts', []);
+        Logger.info('custom layouts cleared');
+    }
+
+    _currentWorkArea() {
+        const window = global.display.get_focus_window();
+        if (window) return Geometry.workAreaFor(window);
+        const monitor = global.display.get_current_monitor();
+        const workspace = global.workspace_manager.get_active_workspace();
+        const area = workspace.get_work_area_for_monitor(monitor);
+        return { x: area.x, y: area.y, width: area.width, height: area.height };
     }
 
     /* -------------------------------------------------- picker by shortcut */

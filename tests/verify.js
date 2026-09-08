@@ -57,7 +57,7 @@ const ok = (c, label, detail = '') => {
 console.log('Module loading (Cinnamon resolution rules)');
 for (const m of ['./extension', './lib/logger', './lib/geometry', './lib/windowMover',
                  './lib/layouts', './lib/configGuard', './lib/dragWatcher',
-                 './lib/layoutPicker']) {
+                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor']) {
   try { cinnamonRequire(m); ok(true, `loads ${m}`); }
   catch (e) { ok(false, `loads ${m}`, String(e.message).split('\n')[0]); }
 }
@@ -82,7 +82,7 @@ for (const [inner, outer] of [[0, 0], [8, 8]]) {
   ok(R.x - (L.x + L.width) === inner, 'exact gap between windows');
   ok(L.width === R.width, 'halves are identical', `${L.width}px each`);
 
-  const all = Layouts.LAYOUTS.flatMap(l => Layouts.resolveLayout(l, WA, inner, outer));
+  const all = Layouts.all().flatMap(l => Layouts.resolveLayout(l, WA, inner, outer));
   ok(all.every(z => z.y >= WA.y && z.y + z.height <= WA.y + WA.height),
      `no zone escapes the work area (${all.length} zones)`);
   ok(all.every(z => z.x >= WA.x && z.x + z.width <= WA.x + WA.width),
@@ -97,6 +97,54 @@ for (const [inner, outer] of [[0, 0], [8, 8]]) {
     for (let j = i + 1; j < grid.length; j++) if (hits(grid[i], grid[j])) col++;
   ok(grid.length === 12 && col === 0, 'grid 4x3: 12 zones, no overlap', `${col} collisions`);
 }
+
+const Tree = cinnamonRequire('./lib/layoutTree');
+const { leaf, branch } = Tree;
+
+console.log('\nLayout tree');
+const halves = branch('row', [leaf(), leaf()]);
+ok(JSON.stringify(Tree.toFractions(halves)) === JSON.stringify([[0, 0, 0.5, 1], [0.5, 0, 0.5, 1]]),
+   'a row of two leaves is two halves');
+const weighted = branch('row', [leaf(), leaf()], [2, 1]);
+ok(Math.abs(Tree.toFractions(weighted)[0][2] - 2 / 3) < 1e-9, 'weights [2,1] give a two thirds split');
+
+const split = Tree.splitAt(halves, [1], 'col');
+ok(Tree.countZones(split) === 3, 'splitting a zone yields one more zone');
+ok(JSON.stringify(Tree.toFractions(split)[0]) === JSON.stringify([0, 0, 0.5, 1]),
+   'splitting one zone leaves the others untouched');
+ok(Tree.countZones(halves) === 2, 'the original tree is not mutated');
+
+const removed = Tree.removeAt(split, [1, 0]);
+ok(Tree.countZones(removed) === 2, 'removing a zone yields one fewer');
+ok(JSON.stringify(Tree.toFractions(removed)) === JSON.stringify([[0, 0, 0.5, 1], [0.5, 0, 0.5, 1]]),
+   'a branch left with one child collapses into it');
+ok(Tree.countZones(Tree.removeAt(leaf(), [])) === 1, 'the last zone cannot be removed');
+
+const resized = Tree.resizeAt(halves, [], 0, 0.2);
+ok(Math.abs(Tree.toFractions(resized)[0][2] - 0.7) < 1e-9, 'dragging a border moves it by the delta');
+ok(JSON.stringify(Tree.resizeAt(halves, [], 0, 0.9)) === JSON.stringify(halves),
+   'a drag that would collapse a zone is refused');
+
+ok(!Tree.isValid({ dir: 'row', children: [leaf()], weights: [1] }), 'a one child branch is invalid');
+ok(!Tree.isValid({ dir: 'diag', children: [leaf(), leaf()], weights: [1, 1] }), 'an unknown direction is invalid');
+ok(!Tree.isValid({ dir: 'row', children: [leaf(), leaf()], weights: [1] }), 'mismatched weights are invalid');
+ok(Tree.isValid(Layouts.BUILTIN[4].tree), 'the 4x3 grid is a valid tree');
+
+console.log('\nEvery built-in layout still resolves as before');
+const EXPECTED = { halves: 2, thirds: 3, 'main-side': 3, quarters: 4, 'grid-4x3': 12 };
+Object.keys(EXPECTED).forEach(id => {
+  ok(Layouts.layoutById(id).zones.length === EXPECTED[id], `${id} has ${EXPECTED[id]} zones`);
+});
+ok(JSON.stringify(Layouts.layoutById('main-side').zones[0]) === JSON.stringify([0, 0, 2 / 3, 1]),
+   'main-side keeps its two thirds column');
+
+console.log('\nCustom layouts');
+Layouts.setCustom([{ id: 'mine', name: 'Mine', tree: branch('col', [leaf(), leaf(), leaf()]) }]);
+ok(Layouts.all().length === 6, 'a custom layout joins the built-ins');
+ok(Layouts.layoutById('mine').zones.length === 3, 'a custom layout resolves its zones');
+Layouts.setCustom([{ id: 'bad', tree: { dir: 'row', children: [leaf()], weights: [1] } }]);
+ok(Layouts.all().length === 5, 'a malformed stored layout is dropped rather than loaded');
+Layouts.setCustom([]);
 
 console.log('\nPointer hit testing');
 const [L, R] = Layouts.resolveLayout(Layouts.layoutById('halves'), WA, 8, 8);

@@ -56,3 +56,29 @@
     border: 2px solid rgba(96, 156, 255, 0.90);
     border-radius: 8px;
 }
+
+/* The zone editor, shown full screen over the desktop. */
+.tilo-editor {
+    background-color: rgba(12, 13, 16, 0.80);
+}
+
+.tilo-editor-zone {
+    background-color: rgba(236, 239, 245, 0.13);
+    border: 2px solid rgba(236, 239, 245, 0.70);
+    border-radius: 8px;
+}
+
+.tilo-editor-zone-hover {
+    background-color: rgba(96, 156, 255, 0.26);
+    border: 2px solid rgb(96, 156, 255);
+}
+
+.tilo-editor-help {
+    background-color: rgba(24, 25, 28, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+    color: rgba(236, 239, 245, 0.92);
+    font-size: 12px;
+    padding: 10px 18px;
+}

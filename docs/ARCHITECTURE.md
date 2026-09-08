@@ -43,7 +43,9 @@ configuration at install time.
 | `extension.js` | Lifecycle (`init`/`enable`/`disable`), wiring, shortcuts | No computation logic |
 | `lib/geometry.js` | Work area, gap application, rectangle arithmetic | Never touches a window |
 | `lib/windowMover.js` | Safe placement: CSD, unmaximize, re-assert | Does not decide *where* |
-| `lib/layouts.js` | Fractional layout definitions, pixel resolution, hit testing | Draws nothing |
+| `lib/layoutTree.js` | The layout model: a split tree, and pure operations on it | Knows nothing about pixels or actors |
+| `lib/layouts.js` | Built-in and custom layouts, pixel resolution, hit testing | Draws nothing |
+| `lib/zoneEditor.js` | Full screen editor for cutting a layout up | Does not decide what a layout means |
 | `lib/configGuard.js` | Backup/restore of foreign keys, under consent | Applies nothing without opt-in |
 | `lib/logger.js` | Prefixed logging, silent by default | - |
 | `lib/dragWatcher.js` | `grab-op-begin`/`end`, pointer polling during the grab | Draws nothing |
@@ -86,8 +88,8 @@ end up under the panel.
 |---|---|---|
 | 1 | Skeleton: clean lifecycle, CSD-safe placement, shortcuts, settings UI | **done** |
 | 2 | Drag-to-top snap bar + `Super+Z` picker, ghost preview | **done** |
-| 3 | Design polish, custom user-drawn zones | next |
-| 4 | Linked-divider resize; named savable window sets (the #1 unmet request in the ecosystem) | planned |
+| 3 | Split tree model, zone editor, custom layouts | **done** |
+| 4 | Linked-divider resize; named savable window sets (the #1 unmet request in the ecosystem) | next |
 | 5 | `.deb` packaging + apt repository | planned |
 | 6 | Publishing: Cinnamon Spices, then the Debian pipeline | planned |
 
@@ -111,3 +113,18 @@ everything is without asking the toolkit.
 
 The shortcut-summoned picker reuses the same polling path, so both surfaces run
 one code path rather than two.
+
+## Why layouts are a tree
+
+A layout could be a list of rectangles, which is what FancyZones' canvas mode
+does. Then every edit has to defend against overlaps, gaps, and zones drifting
+off screen, and none of those invariants can be stated in the type.
+
+`layoutTree.js` stores a layout as nested splits instead. A zone has no
+coordinates of its own; it inherits whatever share of its parent its weight
+gives it. Overlaps and holes become unrepresentable, splitting is a local edit,
+and dragging a border is a single weight changing. Pixel rectangles are derived
+on demand and never stored, so the two cannot fall out of step.
+
+This is the same model KWin uses, and the part of KWin's tiling that other
+projects get asked to copy.

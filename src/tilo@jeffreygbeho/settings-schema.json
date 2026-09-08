@@ -88,6 +88,27 @@
         "default": "<Super>z",
         "description": "Open the layout picker"
     },
+    "kb-editor": {
+        "type": "keybinding",
+        "default": "<Super><Shift>z",
+        "description": "Open the zone editor"
+    },
+    "sepCustom": {
+        "type": "separator"
+    },
+    "headCustom": {
+        "type": "header",
+        "description": "Custom layouts"
+    },
+    "custom-layouts": {
+        "type": "generic",
+        "default": []
+    },
+    "clear-custom": {
+        "type": "button",
+        "description": "Delete all custom layouts",
+        "callback": "clearCustomLayouts"
+    },
     "sep2": {
         "type": "separator"
     },

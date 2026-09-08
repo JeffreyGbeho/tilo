@@ -94,7 +94,8 @@ class LayoutPicker {
         this._workArea = workArea;
 
         const { inner, outer } = this._getGaps();
-        const count = Layouts.LAYOUTS.length;
+        const layouts = Layouts.all();
+        const count = layouts.length;
         const barW = count * THUMB_W + (count - 1) * THUMB_GAP + 2 * BAR_PAD;
         const barH = THUMB_H + 2 * BAR_PAD;
 
@@ -107,7 +108,7 @@ class LayoutPicker {
         this._miniRects = [];
         this._realZones = [];
 
-        Layouts.LAYOUTS.forEach((layout, i) => {
+        layouts.forEach((layout, i) => {
             const tx = BAR_PAD + i * (THUMB_W + THUMB_GAP);
             const ty = BAR_PAD;
 
