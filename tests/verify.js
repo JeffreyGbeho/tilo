@@ -20,7 +20,8 @@ const STUBS = {
                keybindingManager: { addHotKey() {}, removeHotKey() {} } },
   'ui.settings': { ExtensionSettings: class { bind() { return true; } finalize() {} } },
   'gi.St': { Widget: class {} },
-  'gi.Clutter': { AnimationMode: { EASE_OUT_QUAD: 0, EASE_IN_QUAD: 1 },
+  'gi.Graphene': { Point: class { init() {} } },
+  'gi.Clutter': { AnimationMode: { EASE_OUT_QUAD: 0, EASE_IN_QUAD: 1, CUBIC_BEZIER: 35 },
                   ModifierType: { BUTTON1_MASK: 256 } },
   'gi.Meta': { WindowType: { NORMAL: 0 }, MaximizeFlags: { BOTH: 3 },
                GrabOp: { MOVING: 1, KEYBOARD_MOVING: 2 } },
@@ -59,7 +60,7 @@ const ok = (c, label, detail = '') => {
 console.log('Module loading (Cinnamon resolution rules)');
 for (const m of ['./extension', './lib/logger', './lib/geometry', './lib/windowMover',
                  './lib/layouts', './lib/configGuard', './lib/dragWatcher',
-                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor', './lib/tileGroup', './lib/savedGroups', './lib/groupSwitcher', './lib/i18n']) {
+                 './lib/layoutPicker', './lib/layoutTree', './lib/zoneEditor', './lib/tileGroup', './lib/savedGroups', './lib/groupSwitcher', './lib/i18n', './lib/hoverIntent', './lib/motion']) {
   try { cinnamonRequire(m); ok(true, `loads ${m}`); }
   catch (e) { ok(false, `loads ${m}`, String(e.message).split('\n')[0]); }
 }

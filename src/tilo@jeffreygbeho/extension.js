@@ -23,6 +23,7 @@ const { TileGroups } = require('./lib/tileGroup');
 const { _ } = require('./lib/i18n');
 const SavedGroups = require('./lib/savedGroups');
 const { GroupSwitcher } = require('./lib/groupSwitcher');
+const { HoverIntent } = require('./lib/hoverIntent');
 
 const UUID = 'tilo@jeffreygbeho';
 
@@ -32,6 +33,18 @@ const CENTER_BAND = 0.3;
 
 /* Poll interval while the picker is summoned by shortcut rather than by drag. */
 const KEY_POLL_MS = 16;
+
+/*
+ * How long the pointer has to mean it.
+ *
+ * Opening is the shorter of the two: the hand is already moving, and anything
+ * near a third of a second reads as the panel being slow rather than careful.
+ * Closing is more forgiving, because a moment of wobble at the edge of the
+ * panel is not a decision to leave, and having it snap shut underneath you is
+ * far more annoying than having it linger.
+ */
+const OPEN_INTENT_MS = 170;
+const CLOSE_INTENT_MS = 280;
 
 const BINDINGS = [
     { setting: 'kb-left',   position: 'left'   },
@@ -54,6 +67,8 @@ class Tilo {
         this._drag = null;
         this._keyPollId = 0;
         this._keyMode = false;
+        this._openIntent = null;
+        this._closeIntent = null;
         this._enabled = false;
     }
 
@@ -94,6 +109,9 @@ class Tilo {
             onSave: () => this._saveGroup()
         });
 
+        this._openIntent = new HoverIntent(OPEN_INTENT_MS, () => this._picker.expand());
+        this._closeIntent = new HoverIntent(CLOSE_INTENT_MS, () => this._picker.collapse());
+
         this._drag = new DragWatcher({
             onDragStart: w => this._onDragStart(w),
             onDragMove: (w, x, y) => this._onDragMove(w, x, y),
@@ -117,6 +135,8 @@ class Tilo {
         this._unbindHotkeys();
 
         if (this._editor) { this._editor.close(); this._editor = null; }
+        if (this._openIntent) { this._openIntent.destroy(); this._openIntent = null; }
+        if (this._closeIntent) { this._closeIntent.destroy(); this._closeIntent = null; }
         if (this._switcher) { this._switcher.close(); this._switcher = null; }
         if (this._groups) { this._groups.clear(); this._groups = null; }
         if (this._drag) { this._drag.disable(); this._drag = null; }
@@ -209,9 +229,9 @@ class Tilo {
 
         if (this._picker.expanded) {
             this._picker.updatePointer(x, y);
-            if (!this._picker.containsPointer(x, y) && y > this._picker.bottomEdge) {
-                this._picker.collapse();
-            }
+            /* Leaving closes it, but only once the pointer has stayed away. */
+            if (this._picker.nearBar(x, y)) this._closeIntent.cancel();
+            else this._closeIntent.arm();
             return;
         }
 
@@ -229,12 +249,13 @@ class Tilo {
         const atTopEdge = depth <= this.revealThreshold &&
                           x >= centerLeft && x <= centerRight;
 
-        if (this._picker.overTeaser(x, y) || atTopEdge) {
-            this._picker.expand();
-        }
+        if (this._picker.overTeaser(x, y) || atTopEdge) this._openIntent.arm();
+        else this._openIntent.cancel();
     }
 
     _onDragEnd(window, x, y) {
+        this._openIntent.cancel();
+        this._closeIntent.cancel();
         const selection = this._picker ? this._picker.hoveredSelection() : null;
         if (this._picker) this._picker.hide();
         if (selection) this._placeInZone(window, selection);

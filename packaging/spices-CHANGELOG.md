@@ -1,3 +1,14 @@
+### 0.6.0
+
+* The tab grows into the picker rather than cross-fading, so the two read as one
+  object at two sizes. Motion follows the cubic bezier curves Microsoft
+  publishes for Fluent, not a named approximation of them.
+* Opening and closing both wait for the pointer to mean it, so brushing past the
+  tab no longer opens it and a moment of wobble no longer closes it.
+* Every coordinate in the overlay is an integer, and neighbouring zones share
+  their boundary exactly, so nothing is resampled and no seam is a pixel wider
+  than its neighbour.
+
 ### 0.5.1
 
 * Touching the layout tab opens the picker. It previously only responded within

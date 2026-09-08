@@ -1,67 +1,86 @@
 /*
  * tilo - the layout picker overlay.
  *
- * Two surfaces, one widget, mirroring Windows 11:
- *   - a compact hint that drops from the top edge while a window is dragged,
- *     expanding into the full bar as the drag continues toward it;
- *   - the same bar summoned by a shortcut.
+ * Two surfaces and one object. A tab hangs from the top edge for the whole of a
+ * drag; move onto it and it grows into the full bar. It grows rather than
+ * cross-fades, because the tab and the bar are meant to read as the same thing
+ * at two sizes, and a cross-fade reads as two different things swapping places.
  *
  * Geometry is computed by hand rather than delegated to a layout manager,
  * because hit testing must work while the window manager holds a pointer grab
  * (no Clutter events reach us then). Knowing every rectangle up front is what
- * makes that possible.
+ * makes that possible, and it is also what lets every coordinate be an integer:
+ * a fractional actor position is resampled and comes out soft.
  *
  * This module decides which zone is under the pointer. It never moves a window.
  */
 
 const St = require('gi.St');
-const Clutter = require('gi.Clutter');
 const Main = require('ui.main');
 const Layouts = require('./lib/layouts');
 const Geometry = require('./lib/geometry');
+const Motion = require('./lib/motion');
 const Logger = require('./lib/logger');
 
-/* Thumbnail proportions. A mini screen, roughly 16:10. */
+/* The bar. Thumbnail proportions are a mini screen, roughly 16:10. */
 const THUMB_W = 128;
 const THUMB_H = 80;
 const THUMB_GAP = 10;
 const BAR_PAD = 10;
-const MINI_GAP = 3;
+const MINI_INSET = 2;
 
 /*
- * The teaser: a tab that hangs from the top edge for the whole of a drag.
- *
- * This is the discovery surface, and the reason it exists is that every zone
- * tool in this category hides behind a gesture nobody is told about. Showing a
- * few miniature layouts the moment a window is picked up says what is available
- * without a word of text, and costs nothing to ignore.
+ * The tab. This is the discovery surface: every zone tool in this category
+ * hides behind a gesture nobody is told about, so a few miniature layouts hang
+ * from the top edge the moment a window is picked up. It says what is on offer
+ * without a word of text and costs nothing to ignore.
  */
 const TEASER_THUMB_W = 46;
 const TEASER_THUMB_H = 28;
 const TEASER_GAP = 6;
 const TEASER_PAD = 8;
 const TEASER_COUNT = 3;
-const TEASER_MINI_GAP = 2;
+const TEASER_MINI_INSET = 1;
+
+/* Hit areas, deliberately larger than what is drawn. Someone who has moved a
+   window towards the tab has already said what they want. */
+const TEASER_HIT_MARGIN = 26;
+const BAR_HIT_MARGIN = 32;
+
+/* The hovered zone lifts slightly. Enough to feel, not enough to notice. */
+const HOVER_SCALE = 1.09;
+const STAGGER_MS = 22;
 
 /*
- * The tab is a target, not just a sign. Inflated on the sides and underneath so
- * hitting a 44px strip does not require aiming: anyone who moves the window
- * towards it has already said what they want.
+ * Rectangles for the zones inside one thumbnail, in integer pixels.
+ *
+ * Rounds the EDGES and derives the size, never the other way round. Rounding a
+ * position and a width separately lets two neighbours disagree about where
+ * their shared boundary is, which shows up as a one pixel seam or overlap. The
+ * same rule governs real window placement in geometry.js.
  */
-const TEASER_HIT_MARGIN = 26;
-
-/* Fluent's published durations. Entrance is deliberately slower than exit. */
-const SHOW_MS = 250;
-const HIDE_MS = 167;
-const HOVER_MS = 83;
+function miniRects(zones, width, height, inset) {
+    return zones.map(([fx, fy, fw, fh]) => {
+        const x0 = Math.round(fx * width);
+        const x1 = Math.round((fx + fw) * width);
+        const y0 = Math.round(fy * height);
+        const y1 = Math.round((fy + fh) * height);
+        return {
+            x: x0 + inset,
+            y: y0 + inset,
+            width: Math.max(1, x1 - x0 - 2 * inset),
+            height: Math.max(1, y1 - y0 - 2 * inset)
+        };
+    });
+}
 
 class LayoutPicker {
     /* getGaps: () => ({ inner, outer }) */
     constructor(getGaps) {
         this._getGaps = getGaps;
-        this._state = 'hidden';        /* hidden | hint | expanded */
-        this._hovered = null;          /* { layout, zone } */
-        this._thumbRects = [];         /* stage coords, per layout */
+        this._state = 'hidden';        /* hidden | teaser | expanded */
+        this._hovered = null;
+        this._layouts = [];
         this._miniRects = [];          /* stage coords, per layout per zone */
         this._realZones = [];          /* screen coords, per layout per zone */
         this._workArea = null;
@@ -75,6 +94,9 @@ class LayoutPicker {
 
         this._bar = new St.Widget({ style_class: 'tilo-bar', reactive: false });
         this._bar.hide();
+        /* Clipped so the thumbnails are revealed by the bar growing over them
+           rather than hanging outside it while it is still small. */
+        this._bar.set_clip_to_allocation(true);
         Main.layoutManager.addChrome(this._bar, { affectsInputRegion: false });
 
         this._teaser = new St.Widget({ style_class: 'tilo-teaser', reactive: false });
@@ -96,17 +118,11 @@ class LayoutPicker {
     get expanded() { return this._state === 'expanded'; }
     get teasing() { return this._state === 'teaser'; }
 
-    /* Below this line the pointer has clearly left the bar. */
-    get bottomEdge() { return (this._barY || 0) + (this._barH || 0) + 60; }
-
-    /* The zone under the pointer, in real screen coordinates, or null. */
     hoveredZone() {
         if (!this._hovered) return null;
         return this._realZones[this._hovered.layout][this._hovered.zone];
     }
 
-    /* The same thing plus which layout it belongs to, so the caller can record
-       the window as part of that arrangement. */
     hoveredSelection() {
         if (!this._hovered) return null;
         return {
@@ -131,16 +147,13 @@ class LayoutPicker {
         const { inner, outer } = this._getGaps();
         const layouts = Layouts.all();
         this._layouts = layouts;
-        const count = layouts.length;
-        const barW = count * THUMB_W + (count - 1) * THUMB_GAP + 2 * BAR_PAD;
-        const barH = THUMB_H + 2 * BAR_PAD;
 
-        this._barW = barW;
-        this._barH = barH;
-        this._barX = Math.round(workArea.x + (workArea.width - barW) / 2);
+        const count = layouts.length;
+        this._barW = count * THUMB_W + (count - 1) * THUMB_GAP + 2 * BAR_PAD;
+        this._barH = THUMB_H + 2 * BAR_PAD;
+        this._barX = Math.round(workArea.x + (workArea.width - this._barW) / 2);
         this._barY = workArea.y + 8;
 
-        this._thumbRects = [];
         this._miniRects = [];
         this._realZones = [];
 
@@ -154,46 +167,37 @@ class LayoutPicker {
             this._bar.add_child(thumb);
             this._thumbs.push(thumb);
 
-            /* Stage coordinates, for hit testing against the polled pointer. */
-            this._thumbRects.push({ x: this._barX + tx, y: this._barY + ty,
-                                    width: THUMB_W, height: THUMB_H });
-
             const minis = [];
-            const miniRects = [];
-            layout.zones.forEach(([fx, fy, fw, fh]) => {
-                const mx = Math.round(fx * THUMB_W) + MINI_GAP / 2;
-                const my = Math.round(fy * THUMB_H) + MINI_GAP / 2;
-                const mw = Math.round(fw * THUMB_W) - MINI_GAP;
-                const mh = Math.round(fh * THUMB_H) - MINI_GAP;
-
+            const stageRects = [];
+            miniRects(layout.zones, THUMB_W, THUMB_H, MINI_INSET).forEach(r => {
                 const mini = new St.Widget({ style_class: 'tilo-mini', reactive: false });
-                mini.set_position(mx, my);
-                mini.set_size(Math.max(1, mw), Math.max(1, mh));
+                mini.set_position(r.x, r.y);
+                mini.set_size(r.width, r.height);
+                mini.set_pivot_point(0.5, 0.5);
                 thumb.add_child(mini);
                 minis.push(mini);
 
-                miniRects.push({ x: this._barX + tx + mx, y: this._barY + ty + my,
-                                 width: mw, height: mh });
+                stageRects.push({ x: this._barX + tx + r.x, y: this._barY + ty + r.y,
+                                  width: r.width, height: r.height });
             });
             this._minis.push(minis);
-            this._miniRects.push(miniRects);
+            this._miniRects.push(stageRects);
 
-            /* The real screen rectangles this thumbnail stands for. */
             this._realZones.push(Layouts.resolveLayout(layout, workArea, inner, outer));
         });
 
-        this._bar.set_size(barW, barH);
+        this._bar.set_size(this._barW, this._barH);
     }
-
-    /* ---------------------------------------------------------------- states */
 
     _buildTeaser(workArea) {
         this._teaser.destroy_all_children();
 
         const layouts = Layouts.all().slice(0, TEASER_COUNT);
-        const width = layouts.length * TEASER_THUMB_W +
-                      (layouts.length - 1) * TEASER_GAP + 2 * TEASER_PAD;
-        const height = TEASER_THUMB_H + 2 * TEASER_PAD;
+        this._teaserW = layouts.length * TEASER_THUMB_W +
+                        (layouts.length - 1) * TEASER_GAP + 2 * TEASER_PAD;
+        this._teaserH = TEASER_THUMB_H + 2 * TEASER_PAD;
+        this._teaserX = Math.round(workArea.x + (workArea.width - this._teaserW) / 2);
+        this._teaserY = workArea.y;
 
         layouts.forEach((layout, i) => {
             const thumb = new St.Widget({ style_class: 'tilo-teaser-thumb' });
@@ -201,58 +205,76 @@ class LayoutPicker {
             thumb.set_size(TEASER_THUMB_W, TEASER_THUMB_H);
             this._teaser.add_child(thumb);
 
-            layout.zones.forEach(([fx, fy, fw, fh]) => {
+            miniRects(layout.zones, TEASER_THUMB_W, TEASER_THUMB_H,
+                      TEASER_MINI_INSET).forEach(r => {
                 const mini = new St.Widget({ style_class: 'tilo-teaser-mini' });
-                mini.set_position(Math.round(fx * TEASER_THUMB_W) + TEASER_MINI_GAP / 2,
-                                  Math.round(fy * TEASER_THUMB_H) + TEASER_MINI_GAP / 2);
-                mini.set_size(Math.max(1, Math.round(fw * TEASER_THUMB_W) - TEASER_MINI_GAP),
-                              Math.max(1, Math.round(fh * TEASER_THUMB_H) - TEASER_MINI_GAP));
+                mini.set_position(r.x, r.y);
+                mini.set_size(r.width, r.height);
                 thumb.add_child(mini);
             });
         });
 
-        this._teaserW = width;
-        this._teaserH = height;
-        this._teaserX = Math.round(workArea.x + (workArea.width - width) / 2);
-        this._teaserY = workArea.y;
-        this._teaser.set_size(width, height);
+        this._teaser.set_size(this._teaserW, this._teaserH);
     }
 
-    /* Shown for the whole drag, from the moment the window is picked up. */
+    /* --------------------------------------------------------------- states */
+
     showTeaser(workArea) {
         if (this._state !== 'hidden') return;
         this._build(workArea);
         this._buildTeaser(workArea);
-
         this._state = 'teaser';
+
         this._teaser.remove_all_transitions();
         this._teaser.set_position(this._teaserX, this._teaserY - this._teaserH);
         this._teaser.opacity = 0;
         this._teaser.show();
-        this._teaser.ease({ y: this._teaserY, opacity: 255, duration: SHOW_MS,
-                            mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        Motion.arrive(this._teaser, {
+            y: this._teaserY, opacity: 255, duration: Motion.MS.normal
+        });
     }
 
+    /*
+     * The tab grows into the bar. Starting the bar at the tab's exact rectangle
+     * and easing it out to full size is what makes them read as one object;
+     * the thumbnails then fade in behind the growing edge, staggered, so the
+     * reveal has a direction instead of appearing all at once.
+     */
     expand() {
         if (this._state !== 'teaser') return;
         this._state = 'expanded';
 
         this._teaser.remove_all_transitions();
-        this._teaser.ease({ opacity: 0, duration: HIDE_MS,
-                            mode: Clutter.AnimationMode.EASE_IN_QUAD,
-                            onComplete: () => { if (this._teaser) this._teaser.hide(); } });
+        Motion.leave(this._teaser, {
+            opacity: 0, duration: Motion.MS.quick,
+            onComplete: () => { if (this._teaser) this._teaser.hide(); }
+        });
 
         this._bar.remove_all_transitions();
-        this._bar.set_position(this._barX, this._barY - 10);
-        this._bar.set_size(this._barW, this._barH);
+        this._bar.set_position(this._teaserX, this._teaserY);
+        this._bar.set_size(this._teaserW, this._teaserH);
         this._bar.opacity = 0;
         this._bar.show();
-        this._bar.ease({ y: this._barY, opacity: 255, duration: SHOW_MS,
-                         mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+
+        this._thumbs.forEach(thumb => {
+            thumb.remove_all_transitions();
+            thumb.opacity = 0;
+        });
+
+        Motion.arrive(this._bar, {
+            x: this._barX, y: this._barY,
+            width: this._barW, height: this._barH,
+            opacity: 255, duration: Motion.MS.morph
+        });
+
+        this._thumbs.forEach((thumb, i) => {
+            Motion.arrive(thumb, {
+                opacity: 255, duration: Motion.MS.normal, delay: 40 + i * STAGGER_MS
+            });
+        });
     }
 
-    /* The pointer left the top of the screen but the drag is still going, so
-       fall back to the teaser rather than vanishing entirely. */
+    /* Shrinks back into the tab. The drag is still going, so the offer stays. */
     collapse() {
         if (this._state !== 'expanded') return;
         this._state = 'teaser';
@@ -260,30 +282,40 @@ class LayoutPicker {
         this._hideGhost();
 
         this._bar.remove_all_transitions();
-        this._bar.ease({ opacity: 0, duration: HIDE_MS,
-                         mode: Clutter.AnimationMode.EASE_IN_QUAD,
-                         onComplete: () => { if (this._bar) this._bar.hide(); } });
+        Motion.leave(this._bar, {
+            x: this._teaserX, y: this._teaserY,
+            width: this._teaserW, height: this._teaserH,
+            opacity: 0, duration: Motion.MS.quick,
+            onComplete: () => { if (this._bar) this._bar.hide(); }
+        });
 
         this._teaser.remove_all_transitions();
         this._teaser.set_position(this._teaserX, this._teaserY);
         this._teaser.show();
-        this._teaser.ease({ opacity: 255, duration: SHOW_MS,
-                            mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        Motion.arrive(this._teaser, { opacity: 255, duration: Motion.MS.normal });
     }
 
-    /* Summoned by shortcut: straight to the expanded state, no hint stage. */
+    /* Summoned by shortcut: straight to the bar, with no tab to grow from. */
     showExpanded(workArea) {
         if (this._state === 'expanded') return;
         if (this._state === 'hidden') this._build(workArea);
-
         this._state = 'expanded';
+
         this._bar.remove_all_transitions();
-        this._bar.set_position(this._barX, this._barY - 12);
+        this._bar.set_position(this._barX, this._barY - 10);
         this._bar.set_size(this._barW, this._barH);
         this._bar.opacity = 0;
         this._bar.show();
-        this._bar.ease({ y: this._barY, opacity: 255, duration: SHOW_MS,
-                         mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        this._thumbs.forEach(t => { t.remove_all_transitions(); t.opacity = 0; });
+
+        Motion.arrive(this._bar, {
+            y: this._barY, opacity: 255, duration: Motion.MS.normal
+        });
+        this._thumbs.forEach((thumb, i) => {
+            Motion.arrive(thumb, {
+                opacity: 255, duration: Motion.MS.normal, delay: 30 + i * STAGGER_MS
+            });
+        });
     }
 
     hide() {
@@ -293,25 +325,20 @@ class LayoutPicker {
         this._hideGhost();
 
         this._teaser.remove_all_transitions();
-        this._teaser.ease({
-            opacity: 0, duration: HIDE_MS,
-            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        Motion.leave(this._teaser, {
+            opacity: 0, duration: Motion.MS.quick,
             onComplete: () => { if (this._teaser) this._teaser.hide(); }
         });
 
         this._bar.remove_all_transitions();
-        this._bar.ease({
-            opacity: 0, duration: HIDE_MS,
-            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        Motion.leave(this._bar, {
+            opacity: 0, duration: Motion.MS.quick,
             onComplete: () => { if (this._bar) this._bar.hide(); }
         });
     }
 
     /* ------------------------------------------------------------- pointing */
 
-    /*
-     * Feed the polled pointer position. Returns true when it rests on a zone.
-     */
     updatePointer(x, y) {
         if (this._state !== 'expanded') return false;
 
@@ -338,13 +365,19 @@ class LayoutPicker {
         }, x, y);
     }
 
-    /* Is the pointer inside the bar's own rectangle? */
+    /* Is the pointer on the open bar, or close enough to still count? */
+    nearBar(x, y) {
+        if (this._state !== 'expanded') return false;
+        return Geometry.contains({
+            x: this._barX - BAR_HIT_MARGIN,
+            y: this._barY - BAR_HIT_MARGIN,
+            width: this._barW + 2 * BAR_HIT_MARGIN,
+            height: this._barH + 2 * BAR_HIT_MARGIN
+        }, x, y);
+    }
+
     containsPointer(x, y) {
-        if (this._state === 'hidden') return false;
-        const r = this._state === 'expanded'
-            ? { x: this._barX, y: this._barY, width: this._barW, height: this._barH }
-            : { x: this._teaserX, y: this._teaserY, width: this._teaserW, height: this._teaserH };
-        return Geometry.contains(r, x, y);
+        return this._state === 'expanded' ? this.nearBar(x, y) : this.overTeaser(x, y);
     }
 
     _setHovered(next) {
@@ -357,6 +390,7 @@ class LayoutPicker {
             const prev = this._minis[this._hovered.layout][this._hovered.zone];
             prev.remove_all_transitions();
             prev.remove_style_class_name('tilo-mini-active');
+            Motion.move(prev, { scale_x: 1, scale_y: 1, duration: Motion.MS.hover });
             this._thumbs[this._hovered.layout].remove_style_class_name('tilo-thumb-active');
         }
 
@@ -364,7 +398,11 @@ class LayoutPicker {
 
         if (next) {
             const mini = this._minis[next.layout][next.zone];
+            mini.remove_all_transitions();
             mini.add_style_class_name('tilo-mini-active');
+            Motion.move(mini, {
+                scale_x: HOVER_SCALE, scale_y: HOVER_SCALE, duration: Motion.MS.hover
+            });
             this._thumbs[next.layout].add_style_class_name('tilo-thumb-active');
             this._showGhost(this._realZones[next.layout][next.zone]);
         } else {
@@ -373,9 +411,9 @@ class LayoutPicker {
     }
 
     /*
-     * The second layer of feedback: a translucent rectangle drawn over the real
-     * screen area the window will occupy. Hovering a 3 mm thumbnail is not
-     * enough to judge a placement.
+     * The second layer of feedback: a translucent rectangle over the real screen
+     * area the window will occupy. Hovering a thumbnail a few millimetres wide
+     * is not enough to judge a placement.
      */
     _showGhost(rect) {
         this._ghost.remove_all_transitions();
@@ -384,20 +422,21 @@ class LayoutPicker {
             this._ghost.set_size(rect.width, rect.height);
             this._ghost.opacity = 0;
             this._ghost.show();
+            Motion.arrive(this._ghost, { opacity: 255, duration: Motion.MS.hover });
+            return;
         }
-        this._ghost.ease({
+        /* Already up: it travels rather than reappears. */
+        Motion.move(this._ghost, {
             x: rect.x, y: rect.y, width: rect.width, height: rect.height,
-            opacity: 255, duration: HOVER_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD
+            opacity: 255, duration: Motion.MS.ghost
         });
     }
 
     _hideGhost() {
         if (!this._ghost || !this._ghost.visible) return;
         this._ghost.remove_all_transitions();
-        this._ghost.ease({
-            opacity: 0, duration: HOVER_MS,
-            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        Motion.leave(this._ghost, {
+            opacity: 0, duration: Motion.MS.hover,
             onComplete: () => { if (this._ghost) this._ghost.hide(); }
         });
     }

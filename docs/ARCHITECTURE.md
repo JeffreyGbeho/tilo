@@ -52,6 +52,8 @@ configuration at install time.
 | `lib/configGuard.js` | Backup/restore of foreign keys, under consent | Applies nothing without opt-in |
 | `lib/logger.js` | Prefixed logging, silent by default | - |
 | `lib/i18n.js` | Binds the translation catalogue for both install routes | - |
+| `lib/motion.js` | Fluent's cubic bezier curves and the durations, in one place | Decides nothing about what animates |
+| `lib/hoverIntent.js` | Makes an action wait for the pointer to keep meaning it | Knows nothing about the picker |
 | `lib/dragWatcher.js` | `grab-op-begin`/`end`, pointer polling during the grab | Draws nothing |
 | `lib/layoutPicker.js` | The picker overlay, its geometry and hit testing (St + Clutter + CSS) | Does not place windows |
 
@@ -149,3 +151,33 @@ The same record answers the other half. A saved arrangement is that tree plus,
 per zone, enough to recognise the window that was in it. Restoring matches those
 descriptions against the windows already open rather than launching new ones,
 which is the part every other implementation skips.
+
+## Motion, and why it is not a named easing
+
+Clutter ships the usual named easings and none of them is the curve this
+interface wants. Windows 11 publishes its own: entrances use
+`cubic-bezier(0, 0, 0, 1)`, which leaves immediately and spends most of its
+time settling, and exits use `cubic-bezier(1, 0, 1, 1)`, which hesitates and
+then goes. `EASE_OUT_QUAD` next to either reads as soft and slightly cheap.
+
+Clutter can do exactly those curves. Set the transition mode to `CUBIC_BEZIER`
+and hand each transition its control points as `Graphene.Point` pairs after
+`ease()` has created them. `motion.js` is that, and nothing else. It falls back
+to the named easing if any of it fails, because motion is polish and must never
+be able to stop the picker from opening.
+
+The tab grows into the bar rather than cross-fading into it. The bar starts at
+the tab's exact rectangle and eases out to full size, clipped to its own
+allocation so the thumbnails are revealed by the growing edge instead of hanging
+outside it. Traced on the real desktop, the width goes 166px, 337, 546, 668,
+700 over 385ms: front loaded, exactly the entrance curve.
+
+## Integer geometry
+
+A fractional actor position is resampled and comes out soft, so every
+coordinate in the overlay is an integer. Zone rectangles inside a thumbnail
+round their EDGES and derive their size, never the other way round: rounding a
+position and a width separately lets two neighbours disagree about where their
+shared boundary is, which shows as a one pixel seam. Measured on the running
+desktop, 128 coordinates, none fractional, and every gap between adjacent zones
+exactly 4px.

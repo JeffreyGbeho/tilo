@@ -1,3 +1,13 @@
+tilo (0.6.0-1) unstable; urgency=medium
+
+  * The tab now grows into the picker instead of cross-fading into it, on the
+    cubic bezier curves Windows 11 publishes rather than a named approximation.
+  * Opening and closing wait for the pointer to mean it.
+  * Every coordinate in the overlay is an integer, and neighbouring zones share
+    their boundary exactly.
+
+ -- Jeffrey Gbeho <jeff.gbeho@gmail.com>  Tue, 08 Sep 2026 18:49:24 -0400
+
 tilo (0.5.1-1) unstable; urgency=medium
 
   * Touching the layout tab now opens the picker. It only responded within 24px
