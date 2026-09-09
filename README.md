@@ -2,7 +2,7 @@
 
 Window tiling for Cinnamon that works the way Windows 11 snap layouts do, without installing half a desktop to get it.
 
-![The layout picker, with the target zone previewed full size](docs/media/snap-layouts.png)
+![Dragging a window to the top, picking a layout, and the window landing in it](docs/media/demo.gif)
 
 ## Why
 
