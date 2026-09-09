@@ -69,4 +69,4 @@ X11 only, which is what Cinnamon 6.4 runs.
 
 ## Links
 
-Source, issues and the apt repository: https://github.com/JeffreyGbeho/tilo
+Source code and issue tracker: https://github.com/JeffreyGbeho/tilo
