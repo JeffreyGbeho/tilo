@@ -34,8 +34,10 @@ jobs:
 
       - name: Commit if anything changed
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Commits under the repository owner rather than the bot, so the
+          # contributor list stays what it should be: the person who wrote it.
+          git config user.name  "Jeffrey Gbeho"
+          git config user.email "jeff.gbeho@gmail.com"
           git add docs/metrics.csv
           git diff --staged --quiet || git commit -m "metrics: $(date -u +%F)"
           git push
