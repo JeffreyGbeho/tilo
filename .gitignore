@@ -9,3 +9,4 @@ debian/debhelper-build-stamp
 dist/
 public/
 build/
+promo/
