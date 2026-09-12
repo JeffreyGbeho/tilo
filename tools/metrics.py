@@ -8,7 +8,7 @@ The extension itself makes no network calls and never will.
 The urgency is GitHub's: traffic views, clones and referrers are kept for
 fourteen days and then destroyed. A number nobody wrote down is gone.
 
-    python3 tools/metrics.py >> docs/metrics.csv
+    python3 tools/metrics.py >> tools/metrics.csv
 """
 
 import json

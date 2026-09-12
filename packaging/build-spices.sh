@@ -20,7 +20,7 @@ cp LICENSE "$OUT/files/$UUID/LICENSE"
 
 cp packaging/spices-README.md "$OUT/README.md"
 cp packaging/spices-CHANGELOG.md "$OUT/CHANGELOG.md"
-cp docs/media/snap-layouts.png "$OUT/screenshot.png"
+cp assets/snap-layouts.png "$OUT/screenshot.png"
 
 cat > "$OUT/info.json" <<'JSON'
 {

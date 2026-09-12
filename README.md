@@ -2,7 +2,7 @@
 
 Window tiling for Cinnamon that works the way Windows 11 snap layouts do, without installing half a desktop to get it.
 
-![Dragging a window to the top, picking a layout, and the window landing in it](docs/media/demo.gif)
+![Dragging a window to the top, picking a layout, and the window landing in it](assets/demo.gif)
 
 ## Why
 
@@ -55,7 +55,7 @@ configuration exactly as it was.
 
 ## Draw your own zones
 
-![The zone editor, cutting the screen into four](docs/media/zone-editor.png)
+![The zone editor, cutting the screen into four](assets/zone-editor.png)
 
 Press `Super+Shift+Z`. The screen becomes one zone. Click it to cut it side by
 side, Ctrl+click to stack, right click to remove one. Enter saves the result as
@@ -83,7 +83,7 @@ weight changing. Everything else follows from laying the group out again.
 
 ## Save an arrangement, put it back later
 
-![Saved arrangements, one card per remembered set of windows](docs/media/saved-groups.png)
+![Saved arrangements, one card per remembered set of windows](assets/saved-groups.png)
 
 Press `Super+G`. Save what is on screen, and restore it whenever you like:
 tilo matches the saved slots against the windows you already have open, by
@@ -155,8 +155,6 @@ toolchain first.
 `make live-test` places every open window in every zone from every starting state and checks the result against the expected rectangle. It moves your windows around while it runs.
 
 Logs are in *Settings > Extensions*, in the warnings tab, or `~/.xsession-errors`. `cinnamon-looking-glass` is the interactive debugger.
-
-[docs/PUBLISHING.md](docs/PUBLISHING.md) covers cutting a release and the route into Debian. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the constraints this design answers, with source references. [docs/RESEARCH.md](docs/RESEARCH.md) is what people actually ask for from a tiling tool and what that implies.
 
 ## License
 

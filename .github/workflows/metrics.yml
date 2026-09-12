@@ -25,11 +25,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p docs
-          if [ ! -f docs/metrics.csv ]; then
-            HEADER=1 python3 tools/metrics.py >> docs/metrics.csv
+          if [ ! -f tools/metrics.csv ]; then
+            HEADER=1 python3 tools/metrics.py >> tools/metrics.csv
           else
-            python3 tools/metrics.py >> docs/metrics.csv
+            python3 tools/metrics.py >> tools/metrics.csv
           fi
 
       - name: Commit if anything changed
@@ -38,6 +37,6 @@ jobs:
           # contributor list stays what it should be: the person who wrote it.
           git config user.name  "Jeffrey Gbeho"
           git config user.email "jeff.gbeho@gmail.com"
-          git add docs/metrics.csv
+          git add tools/metrics.csv
           git diff --staged --quiet || git commit -m "metrics: $(date -u +%F)"
           git push

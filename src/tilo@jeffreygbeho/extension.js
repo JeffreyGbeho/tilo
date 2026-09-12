@@ -1,8 +1,6 @@
 /*
  * tilo - modern window tiling for Cinnamon.
  * https://github.com/JeffreyGbeho/tilo
- *
- * See docs/ARCHITECTURE.md for the constraints this design answers.
  */
 
 const Main = require('ui.main');
